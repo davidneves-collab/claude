@@ -1,2 +1,3 @@
 legendas/*.mov
 legendas/__pycache__/
+!legendas/Timeline_1_Terrae_overlay_alpha_png.mov
