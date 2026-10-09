@@ -1,0 +1,27 @@
+[Script Info]
+Title: Terrae · Timeline 1 · Legendas PT
+ScriptType: v4.00+
+PlayResX: 1080
+PlayResY: 1920
+WrapStyle: 2
+ScaledBorderAndShadow: yes
+
+[V4+ Styles]
+Format: Name, Fontname, Fontsize, PrimaryColour, SecondaryColour, OutlineColour, BackColour, Bold, Italic, Underline, StrikeOut, ScaleX, ScaleY, Spacing, Angle, BorderStyle, Outline, Shadow, Alignment, MarginL, MarginR, MarginV, Encoding
+Style: Terrae,Manrope Medium,54,&H00E5EDF2,&H00E5EDF2,&H401B1D1D,&H401B1D1D,0,0,0,0,100,100,0.5,0,3,14,0,2,120,120,560,1
+
+[Events]
+Format: Layer, Start, End, Style, Name, MarginL, MarginR, MarginV, Effect, Text
+Dialogue: 0,0:00:00.00,0:00:02.70,Terrae,,0,0,0,,{\fad(120,120)}Está à procura de casa\Ne ainda não encontrou a eleita?
+Dialogue: 0,0:00:02.75,0:00:04.55,Terrae,,0,0,0,,{\fad(120,120)}E se fôssemos nós a procurar?
+Dialogue: 0,0:00:04.60,0:00:06.50,Terrae,,0,0,0,,{\fad(120,120)}Temos imensas oportunidades\Nalém dos sites,
+Dialogue: 0,0:00:06.85,0:00:09.00,Terrae,,0,0,0,,{\fad(120,120)}principalmente aquelas que\Nainda não estão no mercado.
+Dialogue: 0,0:00:09.20,0:00:11.10,Terrae,,0,0,0,,{\fad(120,120)}Antes de cada visita,\Nsabe ao que vai.
+Dialogue: 0,0:00:11.15,0:00:13.00,Terrae,,0,0,0,,{\fad(120,120)}Os documentos\Njá foram verificados.
+Dialogue: 0,0:00:13.00,0:00:14.95,Terrae,,0,0,0,,{\fad(120,120)}Na hora da proposta,\Nnão vai às cegas.
+Dialogue: 0,0:00:15.80,0:00:18.05,Terrae,,0,0,0,,{\fad(120,120)}Os dados da zona dizem-nos\Nquanto oferecer.
+Dialogue: 0,0:00:20.00,0:00:21.75,Terrae,,0,0,0,,{\fad(120,120)}O nosso acompanhamento\Né completo,
+Dialogue: 0,0:00:21.80,0:00:25.00,Terrae,,0,0,0,,{\fad(120,120)}desde a visita, proposta\Ne até à escritura,
+Dialogue: 0,0:00:25.05,0:00:27.00,Terrae,,0,0,0,,{\fad(120,120)}para que possa comprar\Nem segurança.
+Dialogue: 0,0:00:27.05,0:00:28.50,Terrae,,0,0,0,,{\fad(120,120)}Diga-nos o que procura.
+Dialogue: 0,0:00:28.55,0:00:30.60,Terrae,,0,0,0,,{\fad(120,120)}Ligamos depois\Ncom as primeiras casas.
