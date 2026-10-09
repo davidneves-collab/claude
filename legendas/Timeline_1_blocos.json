@@ -1,0 +1,44 @@
+{
+  "outro_start": 31.3,
+  "blocks": [
+    {"start": 0.00, "end": 2.70, "lines": [
+      {"style": "ctx", "text": "Está à procura de casa"},
+      {"style": "ctx", "text": "e ainda não encontrou"},
+      {"style": "sienna", "text": "a eleita?"}]},
+    {"start": 2.75, "end": 4.55, "lines": [
+      {"style": "ctx", "text": "E se fôssemos nós a procurar?"}]},
+    {"start": 4.60, "end": 6.50, "lines": [
+      {"style": "ctx", "text": "Temos imensas oportunidades"},
+      {"style": "sand", "text": "além dos sites"}]},
+    {"start": 6.85, "end": 9.00, "lines": [
+      {"style": "ctx", "text": "principalmente aquelas que"},
+      {"style": "ctx", "text": "ainda não estão no mercado."}]},
+    {"start": 9.20, "end": 11.10, "lines": [
+      {"style": "ctx", "text": "Antes de cada visita,"},
+      {"style": "ctx", "text": "sabe ao que vai."}]},
+    {"start": 11.15, "end": 13.00, "lines": [
+      {"style": "ctx", "text": "Os documentos"},
+      {"style": "ctx", "text": "já foram verificados."}]},
+    {"start": 13.00, "end": 14.95, "lines": [
+      {"style": "ctx", "text": "Na hora da proposta"},
+      {"style": "ink", "text": "não vai às cegas"}]},
+    {"start": 15.80, "end": 18.05, "lines": [
+      {"style": "ctx", "text": "Os dados da zona dizem-nos"},
+      {"style": "ctx", "text": "quanto oferecer."}]},
+    {"start": 20.00, "end": 21.75, "lines": [
+      {"style": "ctx", "text": "O nosso acompanhamento"},
+      {"style": "sienna", "text": "é completo"}]},
+    {"start": 21.80, "end": 25.00, "lines": [
+      {"style": "ctx", "text": "desde a visita, proposta"},
+      {"style": "ctx", "text": "e até à escritura,"}]},
+    {"start": 25.05, "end": 27.00, "lines": [
+      {"style": "ctx", "text": "para que possa comprar"},
+      {"style": "sand", "text": "em segurança."}]},
+    {"start": 27.05, "end": 28.50, "closing": true, "size": 132, "lines": [
+      {"style": "sienna", "text": "Diga-nos"},
+      {"style": "sienna", "text": "o que procura."}]},
+    {"start": 28.55, "end": 30.60, "lines": [
+      {"style": "ctx", "text": "Ligamos depois com"},
+      {"style": "ctx", "text": "as primeiras casas."}]}
+  ]
+}
