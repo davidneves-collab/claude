@@ -232,12 +232,26 @@ class Outro:
         img.alpha_composite(layer)
 
 
+def write_srt(path, blocks):
+    def ts(t):
+        ms = int(round(t * 1000))
+        return f"{ms // 3600000:02}:{ms // 60000 % 60:02}:{ms // 1000 % 60:02},{ms % 1000:03}"
+    with open(path, "w") as f:
+        for i, b in enumerate(blocks, 1):
+            text = "\n".join(ln["text"] for ln in b["lines"])
+            end = min(b["hide"], blocks[i]["show"] - 0.04) if i < len(blocks) else b["hide"]
+            f.write(f"{i}\n{ts(b['show'])} --> {ts(end)}\n{text}\n\n")
+
+
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("blocks"); ap.add_argument("video"); ap.add_argument("out")
     ap.add_argument("--fonts", required=True); ap.add_argument("--assets", required=True)
     ap.add_argument("--wav", required=True, help="áudio mono 16 kHz do vídeo")
     ap.add_argument("--video-end", type=float, required=True, help="fim útil da imagem (s, tempo do vídeo)")
+    ap.add_argument("--overlay", action="store_true",
+                    help="exporta só as legendas, abertura e fecho em ProRes 4444 com alfa (para o DaVinci)")
+    ap.add_argument("--srt", help="exporta também um SRT simples (texto e tempos, sem estilo)")
     args = ap.parse_args()
 
     cfg = json.load(open(args.blocks))
@@ -259,6 +273,9 @@ def main():
     outro = Outro(outro_start, fonts, args.assets)
     n = int(round(total * FPS))
 
+    if args.srt:
+        write_srt(args.srt, blocks)
+
     pad_stop = total - INTRO - args.video_end + 0.5
     fc = (f"[0:v]trim=0:{args.video_end},setpts=PTS-STARTPTS,"
           f"tpad=start_duration={INTRO}:start_mode=clone:stop_duration={pad_stop}:stop_mode=clone[base];"
@@ -269,6 +286,11 @@ def main():
            "-filter_complex", fc, "-map", "[v]", "-map", "[a]", "-r", str(FPS),
            "-c:v", "libx264", "-crf", "18", "-preset", "medium", "-c:a", "aac", "-b:a", "192k",
            "-movflags", "+faststart", "-t", f"{total:.3f}", args.out]
+    if args.overlay:
+        cmd = ["ffmpeg", "-v", "error", "-y",
+               "-f", "rawvideo", "-pix_fmt", "rgba", "-s", f"{W}x{H}", "-r", str(FPS), "-i", "pipe:",
+               "-c:v", "prores_ks", "-profile:v", "4444", "-pix_fmt", "yuva444p10le",
+               "-alpha_bits", "16", "-vendor", "apl0", "-t", f"{total:.3f}", args.out]
     proc = subprocess.Popen(cmd, stdin=subprocess.PIPE)
     for k in range(n):
         t = k / FPS
