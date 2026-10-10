@@ -283,13 +283,19 @@ function garantirPasta(sh, r, v) {
   const nome = `${v[COL.id - 1]} · ${v[COL.consultor - 1]} · ${v[COL.servico - 1]}`;
   const existentes = principal.getFoldersByName(nome);
   const pasta = existentes.hasNext() ? existentes.next() : principal.createFolder(nome);
-  try {
-    pasta.addViewer(v[COL.email - 1]);
-  } catch (err) {
-    console.warn(`Não foi possível partilhar a pasta com ${v[COL.email - 1]}: ${err.message}`);
-  }
+  partilharSemAviso(pasta.getId(), v[COL.email - 1]);
   sh.getRange(r, COL.pasta).setValue(pasta.getUrl());
   v[COL.pasta - 1] = pasta.getUrl();
+}
+
+// Dá acesso de leitura sem o email automático do Google (não leva assinatura).
+// Precisa do serviço "Drive API" ativo no editor (Serviços > + > Drive API).
+function partilharSemAviso(idPasta, email) {
+  try {
+    Drive.Permissions.create({ role: 'reader', type: 'user', emailAddress: email }, idPasta, { sendNotificationEmail: false });
+  } catch (err) {
+    console.warn(`Pasta não partilhada com ${email}: ${err.message}`);
+  }
 }
 
 /* ---------- Envio ---------- */
@@ -380,7 +386,8 @@ function enviarLinha(sh, r, v) {
     ev.setTitle(titulo).setLocation(local).setDescription(descricao);
     if (!ev.getGuestByEmail(email)) ev.addGuest(email);
   } else {
-    const opts = { location: local, description: descricao, guests: email, sendInvites: true };
+    // Sem o convite automático do Google (não leva assinatura): os detalhes vão no nosso email
+    const opts = { location: local, description: descricao, guests: email, sendInvites: false };
     ev = h.diaInteiro
       ? cal.createAllDayEvent(titulo, h.inicio, opts)
       : cal.createEvent(titulo, h.inicio, h.fim, opts);
@@ -411,7 +418,7 @@ function atualizarLinha(sh, r, v) {
   aplicarHorario(ev, horario(v));
   ev.setLocation(v[COL.local - 1] || '').setDescription(descricaoEvento(v))
     .setTitle(`${v[COL.servico - 1]}: ${v[COL.consultor - 1]}`);
-  return 'evento atualizado (o Google avisa o consultor da alteração)';
+  return 'evento atualizado';
 }
 
 function aplicarHorario(ev, h) {
