@@ -8,6 +8,8 @@
  *      evento na tua agenda com o consultor como convidado (fica nas duas agendas)
  *      e envia-lhe um email com o link do script, o local e a data.
  *   3. Atualizar evento: se mudares data, hora ou local, atualiza o evento já criado.
+ * Ao enviar, cria a pasta do ID em AGENDA DE PRODUÇÃO (Drive). Quando o Estado muda,
+ * o consultor recebe um email.
  */
 
 const SHEET = 'Agendamentos';
@@ -45,6 +47,16 @@ const EMAIL = {
   whatsapp: '+351 938 198 471',
   logoAssinatura: 'https://leads.terrae.pt/assets/terrae-logo.png',
   logoCabecalhoDrive: '1jiKZAJK-MYCd52Y6lfp_3jlQDEijr4bV', // terrae-logo-claro.png no Drive
+};
+
+// Pasta "AGENDA DE PRODUÇÃO" no Drive: cada ID ganha aqui uma subpasta
+const PASTA_PRINCIPAL = '1sTR7K1AE5Oi_lzb-b9BS5oR5F4aBnpyq';
+
+// Email enviado ao consultor quando o Estado muda
+const MENSAGEM_ESTADO = {
+  'Iniciado': 'A produção foi iniciada.',
+  'Em tratamento': 'As gravações estão feitas e o material está em edição.',
+  'Concluído': 'O trabalho está concluído. O produto final já está na pasta do projeto.',
 };
 
 // Colunas da folha Agendamentos (1 = A)
@@ -145,7 +157,7 @@ function configurar() {
   sh.getRange(2, COL.evento, n).setFontColor(COR.sage);
   sh.getRange(2, COL.email, n).setFontColor(COR.sienna);
 
-  SpreadsheetApp.getUi().alert(
+  avisar(
     'Folha configurada.\n\n1) Preenche o separador "Consultores" (nome + email).\n' +
     '2) Ajusta os tipos de serviço no separador "Servicos" se quiseres.\n' +
     '3) Para enviar: seleciona a linha e usa Produção > Enviar agendamento ao consultor.');
@@ -212,8 +224,70 @@ function onEdit(e) {
 
 function instalarGatilhos() {
   const ss = SpreadsheetApp.getActive();
-  const existe = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'abrirMenu');
-  if (!existe) ScriptApp.newTrigger('abrirMenu').forSpreadsheet(ss).onOpen().create();
+  const existentes = ScriptApp.getProjectTriggers().map(t => t.getHandlerFunction());
+  if (existentes.indexOf('abrirMenu') < 0) ScriptApp.newTrigger('abrirMenu').forSpreadsheet(ss).onOpen().create();
+  // Gatilho instalável: corre com a conta do David mesmo quando outro colaborador muda o Estado
+  if (existentes.indexOf('estadoAlterado') < 0) ScriptApp.newTrigger('estadoAlterado').forSpreadsheet(ss).onEdit().create();
+}
+
+/* ---------- Mudança de estado ---------- */
+
+// Quando o Estado de um agendamento já enviado muda, o consultor recebe um email
+function estadoAlterado(e) {
+  const sh = e.range.getSheet();
+  if (sh.getName() !== SHEET || e.range.getColumn() !== COL.estado || e.range.getNumColumns() !== 1) return;
+  for (let r = Math.max(2, e.range.getRow()); r <= e.range.getLastRow(); r++) {
+    const v = sh.getRange(r, 1, 1, CABECALHO.length).getValues()[0];
+    const estado = v[COL.estado - 1];
+    if (!estado || !v[COL.enviado - 1]) continue; // só depois de o agendamento ter sido enviado
+    if (e.range.getNumRows() === 1 && e.oldValue === estado) continue;
+    v[COL.email - 1] = emailDe(v[COL.consultor - 1]);
+    if (String(v[COL.email - 1]).indexOf('@') < 0) continue;
+    try {
+      enviarEmailEstado(v, estado);
+      sh.getRange(r, COL.notas).setNote(`Estado "${estado}" comunicado em ${formatarData(new Date(), true)}`);
+    } catch (err) {
+      console.error(`Linha ${r}: ${err.message}`);
+    }
+  }
+}
+
+function enviarEmailEstado(v, estado) {
+  const imagens = logotipos();
+  MailApp.sendEmail({
+    to: v[COL.email - 1],
+    name: EMAIL.remetente,
+    subject: `${v[COL.id - 1]} · ${v[COL.servico - 1]}: ${estado}`,
+    body: `${MENSAGEM_ESTADO[estado] || 'Estado atualizado: ' + estado}\n\n${descricaoEvento(v)}`,
+    htmlBody: modeloEmail({
+      eyebrow: `Estado da produção · ${v[COL.id - 1]}`,
+      titulo: estado,
+      consultor: v[COL.consultor - 1],
+      texto: MENSAGEM_ESTADO[estado] || `O estado passou a ${estado}.`,
+      linhas: [['Serviço', v[COL.servico - 1]], ['Local', v[COL.local - 1] || 'A definir']],
+      botoes: v[COL.pasta - 1] ? [[v[COL.pasta - 1], 'Pasta do produto final', true]] : [],
+      fecho: 'Qualquer dúvida, responde a este email.',
+    }, imagens),
+    inlineImages: imagens,
+  });
+}
+
+/* ---------- Pasta do projeto ---------- */
+
+// Cria (uma vez) a subpasta do ID dentro de AGENDA DE PRODUÇÃO e partilha-a com o consultor
+function garantirPasta(sh, r, v) {
+  if (v[COL.pasta - 1]) return;
+  const principal = DriveApp.getFolderById(PASTA_PRINCIPAL);
+  const nome = `${v[COL.id - 1]} · ${v[COL.consultor - 1]} · ${v[COL.servico - 1]}`;
+  const existentes = principal.getFoldersByName(nome);
+  const pasta = existentes.hasNext() ? existentes.next() : principal.createFolder(nome);
+  try {
+    pasta.addViewer(v[COL.email - 1]);
+  } catch (err) {
+    console.warn(`Não foi possível partilhar a pasta com ${v[COL.email - 1]}: ${err.message}`);
+  }
+  sh.getRange(r, COL.pasta).setValue(pasta.getUrl());
+  v[COL.pasta - 1] = pasta.getUrl();
 }
 
 /* ---------- Envio ---------- */
@@ -287,6 +361,7 @@ function horario(v) {
 function enviarLinha(sh, r, v) {
   validar(v);
   garantirId(sh, r, v);
+  garantirPasta(sh, r, v);
 
   const consultor = v[COL.consultor - 1];
   const email = v[COL.email - 1];
@@ -375,19 +450,35 @@ function logotipos() {
 
 // Email no visual Terrae: fundo areia, cabeçalho Ink, Manrope, sem negrito
 function emailHtml(v, h, imagens) {
+  return modeloEmail({
+    eyebrow: `Agendamento de produção · ${v[COL.id - 1]}`,
+    titulo: v[COL.servico - 1],
+    consultor: v[COL.consultor - 1],
+    texto: 'O script foi aprovado e a produção ficou agendada. O evento já está na tua agenda Google.',
+    linhas: [
+      ['Data', formatarData(h.inicio, !h.diaInteiro)],
+      ['Local', v[COL.local - 1] || 'A definir'],
+    ].concat(v[COL.notas - 1] ? [['Notas', v[COL.notas - 1]]] : []),
+    botoes: [[v[COL.script - 1], 'Abrir script', true]]
+      .concat(v[COL.pasta - 1] ? [[v[COL.pasta - 1], 'Pasta do produto final', false]] : []),
+    fecho: 'Lê o script antes do dia. Qualquer dúvida, responde a este email.',
+  }, imagens);
+}
+
+function modeloEmail(m, imagens) {
   const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   const fonte = "'Manrope', 'Helvetica Neue', Helvetica, Arial, sans-serif";
   const titulo = "'Arya', Georgia, 'Times New Roman', serif";
   const remetenteEmail = Session.getEffectiveUser().getEmail();
   const caps = `font-family:${fonte};font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:${COR.sage};font-weight:500;`;
 
-  const linha = (k, val) => `
+  const linha = ([k, val]) => `
     <tr>
-      <td style="padding:14px 0;border-top:1px solid ${COR.sand};${caps}width:130px;vertical-align:top;">${k}</td>
-      <td style="padding:14px 0;border-top:1px solid ${COR.sand};font-family:${fonte};font-size:15px;color:${COR.ink};font-weight:400;">${val}</td>
+      <td style="padding:14px 0;border-top:1px solid ${COR.sand};${caps}width:130px;vertical-align:top;">${esc(k)}</td>
+      <td style="padding:14px 0;border-top:1px solid ${COR.sand};font-family:${fonte};font-size:15px;color:${COR.ink};font-weight:400;">${esc(val)}</td>
     </tr>`;
 
-  const botao = (url, txt, principal) => `
+  const botao = ([url, txt, principal]) => `
     <td style="padding:0 12px 12px 0;">
       <a href="${esc(url)}" style="display:inline-block;padding:14px 26px;font-family:${fonte};font-size:13px;letter-spacing:0.08em;
         text-decoration:none;font-weight:500;border:1px solid ${COR.ink};
@@ -411,32 +502,25 @@ function emailHtml(v, h, imagens) {
       <tr><td style="background:${COR.ink};padding:28px 40px;">${cabecalho}</td></tr>
 
       <tr><td style="padding:44px 40px 8px 40px;">
-        <div style="${caps}">Agendamento de produção · ${esc(v[COL.id - 1])}</div>
-        <div style="font-family:${titulo};font-size:30px;line-height:1.2;color:${COR.ink};font-weight:400;padding:14px 0 22px 0;">${esc(v[COL.servico - 1])}</div>
-        <p style="font-family:${fonte};font-size:15px;line-height:1.6;color:${COR.ink};margin:0 0 12px 0;">Olá ${esc(v[COL.consultor - 1])},</p>
-        <p style="font-family:${fonte};font-size:15px;line-height:1.6;color:${COR.ink};margin:0 0 28px 0;">
-          O script foi aprovado e a produção ficou agendada. O evento já está na tua agenda Google.</p>
+        <div style="${caps}">${esc(m.eyebrow)}</div>
+        <div style="font-family:${titulo};font-size:30px;line-height:1.2;color:${COR.ink};font-weight:400;padding:14px 0 22px 0;">${esc(m.titulo)}</div>
+        <p style="font-family:${fonte};font-size:15px;line-height:1.6;color:${COR.ink};margin:0 0 12px 0;">Olá ${esc(m.consultor)},</p>
+        <p style="font-family:${fonte};font-size:15px;line-height:1.6;color:${COR.ink};margin:0 0 28px 0;">${esc(m.texto)}</p>
       </td></tr>
 
       <tr><td style="padding:0 40px;">
         <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
-          ${linha('Data', esc(formatarData(h.inicio, !h.diaInteiro)))}
-          ${linha('Local', esc(v[COL.local - 1] || 'A definir'))}
-          ${v[COL.notas - 1] ? linha('Notas', esc(v[COL.notas - 1])) : ''}
+          ${m.linhas.map(linha).join('')}
           <tr><td colspan="2" style="border-top:1px solid ${COR.sand};font-size:0;line-height:0;">&nbsp;</td></tr>
         </table>
       </td></tr>
 
-      <tr><td style="padding:24px 40px 12px 40px;">
-        <table role="presentation" cellpadding="0" cellspacing="0"><tr>
-          ${botao(v[COL.script - 1], 'Abrir script', true)}
-          ${v[COL.pasta - 1] ? botao(v[COL.pasta - 1], 'Pasta do produto final', false) : ''}
-        </tr></table>
-      </td></tr>
+      ${m.botoes.length ? `<tr><td style="padding:24px 40px 12px 40px;">
+        <table role="presentation" cellpadding="0" cellspacing="0"><tr>${m.botoes.map(botao).join('')}</tr></table>
+      </td></tr>` : ''}
 
       <tr><td style="padding:12px 40px 36px 40px;">
-        <p style="font-family:${fonte};font-size:15px;line-height:1.6;color:${COR.ink};margin:0;">
-          Lê o script antes do dia. Qualquer dúvida, responde a este email.</p>
+        <p style="font-family:${fonte};font-size:15px;line-height:1.6;color:${COR.ink};margin:0;">${esc(m.fecho)}</p>
       </td></tr>
 
       <tr><td style="padding:28px 40px 40px 40px;border-top:1px solid ${COR.sand};">
@@ -459,6 +543,15 @@ function emailHtml(v, h, imagens) {
   </td></tr>
 </table>
 </body></html>`;
+}
+
+// Mostra a mensagem na folha; quando corre a partir do editor, escreve no registo
+function avisar(texto) {
+  try {
+    SpreadsheetApp.getUi().alert(texto);
+  } catch (e) {
+    console.log(texto);
+  }
 }
 
 function formatarData(d, comHora) {
