@@ -139,6 +139,8 @@ function configurar() {
   sh.getRange(2, COL.email, n).clearContent();
   preencherEmails();
   instalarGatilhos();
+  PropertiesService.getScriptProperties().deleteProperty('logoClaro');
+  logotipos(); // guarda o logótipo para o gatilho do Estado
 
   // Cores do estado
   const est = sh.getRange(2, COL.estado, n);
@@ -438,12 +440,19 @@ function descricaoEvento(v) {
   ].filter(Boolean).join('\n');
 }
 
-// Logótipo claro (para o cabeçalho escuro), lido do Drive e embutido no email
+// Logótipo claro (para o cabeçalho escuro), embutido no email.
+// Fica guardado nas propriedades do script: o gatilho do Estado não pode ler o Drive.
 function logotipos() {
+  const props = PropertiesService.getScriptProperties();
   try {
-    return { logoCabecalho: DriveApp.getFileById(EMAIL.logoCabecalhoDrive).getBlob().setName('terrae-claro.png') };
+    let b64 = props.getProperty('logoClaro');
+    if (!b64) {
+      b64 = Utilities.base64Encode(DriveApp.getFileById(EMAIL.logoCabecalhoDrive).getBlob().getBytes());
+      props.setProperty('logoClaro', b64);
+    }
+    return { logoCabecalho: Utilities.newBlob(Utilities.base64Decode(b64), 'image/png', 'terrae-claro.png') };
   } catch (e) {
-    console.warn('Logótipo indisponível: ' + e.message);
+    console.warn('Logótipo indisponível, o email segue sem ele: ' + e.message);
     return {};
   }
 }
