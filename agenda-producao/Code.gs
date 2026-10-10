@@ -144,6 +144,7 @@ function configurar() {
 function aplicarTema(folha, colunas, linhas) {
   const total = folha.getRange(1, 1, linhas + 1, colunas);
   folha.getBandings().forEach(b => b.remove());
+  total.setBackground(null); // limpa cores antigas, que se sobrepunham às linhas alternadas
   total.applyRowBanding()
     .setHeaderRowColor(COR.ink)
     .setFirstRowColor(COR.sandSoft)
