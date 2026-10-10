@@ -38,6 +38,16 @@ const CABECALHO = [
 ];
 
 function onOpen() {
+  criarMenu();
+}
+
+// Gatilho instalável (configurado em "Configurar folha"): garante o menu mesmo
+// quando o onOpen simples não corre (ex.: várias contas Google no browser).
+function abrirMenu() {
+  criarMenu();
+}
+
+function criarMenu() {
   SpreadsheetApp.getUi()
     .createMenu('Produção')
     .addItem('Enviar agendamento ao consultor', 'enviarSelecionados')
@@ -91,12 +101,10 @@ function configurar() {
   sh.getRange(2, COL.hora, n).setNumberFormat('hh:mm');
   sh.getRange(2, COL.enviado, n).setNumberFormat('dd/mm/yyyy hh:mm');
 
-  // Email preenchido automaticamente a partir do separador Consultores
-  const formulas = [];
-  for (let r = 2; r <= n + 1; r++) {
-    formulas.push([`=IF(B${r}="","",IFERROR(VLOOKUP(B${r},${SHEET_CONSULTORES}!$A:$B,2,FALSE),"⚠ consultor sem email"))`]);
-  }
-  sh.getRange(2, COL.email, n).setFormulas(formulas);
+  // Email preenchido pelo script (sem fórmulas, para funcionar em qualquer idioma)
+  sh.getRange(2, COL.email, n).clearContent();
+  preencherEmails();
+  instalarGatilhos();
 
   // Cores do estado
   const est = sh.getRange(2, COL.estado, n);
@@ -109,7 +117,7 @@ function configurar() {
 
   [70, 180, 220, 230, 220, 95, 60, 90, 280, 280, 120, 240, 140, 160]
     .forEach((w, i) => sh.setColumnWidth(i + 1, w));
-  sh.getRange(1, COL.email).setNote('Preenchido automaticamente. Para mudar, edita o separador Consultores.');
+  sh.getRange(1, COL.email).setNote('Preenchido automaticamente ao escolher o consultor. Para mudar, edita o separador Consultores.');
   sh.getRange(1, COL.evento).setNote('Preenchido pelo script. Não editar.');
   sh.getRange(2, COL.evento, n).setFontColor('#999999');
   sh.getRange(2, COL.email, n).setFontColor('#555555');
@@ -122,6 +130,54 @@ function configurar() {
 
 function formatarCabecalho(range, cor) {
   range.setFontWeight('bold').setFontColor('#FFFFFF').setBackground(cor).setVerticalAlignment('middle').setWrap(true);
+}
+
+/* ---------- Email do consultor ---------- */
+
+function mapaConsultores() {
+  const cons = SpreadsheetApp.getActive().getSheetByName(SHEET_CONSULTORES);
+  const mapa = {};
+  if (!cons || cons.getLastRow() < 2) return mapa;
+  cons.getRange(2, 1, cons.getLastRow() - 1, 2).getValues().forEach(([nome, email]) => {
+    if (nome) mapa[String(nome).trim()] = String(email || '').trim();
+  });
+  return mapa;
+}
+
+function emailDe(nome, mapa) {
+  if (!nome) return '';
+  return (mapa || mapaConsultores())[String(nome).trim()] || '⚠ consultor sem email';
+}
+
+// Atualiza a coluna "Email do consultor" de todas as linhas
+function preencherEmails() {
+  const sh = SpreadsheetApp.getActive().getSheetByName(SHEET);
+  const ultima = sh.getLastRow();
+  if (ultima < 2) return;
+  const mapa = mapaConsultores();
+  const nomes = sh.getRange(2, COL.consultor, ultima - 1).getValues();
+  sh.getRange(2, COL.email, ultima - 1).setValues(nomes.map(([nome]) => [emailDe(nome, mapa)]));
+}
+
+function onEdit(e) {
+  const sh = e.range.getSheet();
+  const nome = sh.getName();
+  if (nome === SHEET_CONSULTORES) {
+    preencherEmails();
+  } else if (nome === SHEET && e.range.getLastColumn() >= COL.consultor && e.range.getColumn() <= COL.consultor) {
+    const linhas = e.range.getNumRows();
+    const primeira = e.range.getRow();
+    const mapa = mapaConsultores();
+    for (let r = Math.max(2, primeira); r < primeira + linhas; r++) {
+      sh.getRange(r, COL.email).setValue(emailDe(sh.getRange(r, COL.consultor).getValue(), mapa));
+    }
+  }
+}
+
+function instalarGatilhos() {
+  const ss = SpreadsheetApp.getActive();
+  const existe = ScriptApp.getProjectTriggers().some(t => t.getHandlerFunction() === 'abrirMenu');
+  if (!existe) ScriptApp.newTrigger('abrirMenu').forSpreadsheet(ss).onOpen().create();
 }
 
 /* ---------- Envio ---------- */
@@ -150,6 +206,8 @@ function processarSelecao(soAtualizar) {
   for (let r = primeira; r <= ultima; r++) {
     const v = sh.getRange(r, 1, 1, CABECALHO.length).getValues()[0];
     if (!v[COL.consultor - 1]) continue;
+    v[COL.email - 1] = emailDe(v[COL.consultor - 1]);
+    sh.getRange(r, COL.email).setValue(v[COL.email - 1]);
     try {
       if (soAtualizar) {
         resultados.push(`Linha ${r}: ${atualizarLinha(sh, r, v)}`);
