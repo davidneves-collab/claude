@@ -62,6 +62,7 @@ function criarMenu() {
 function configurar() {
   const ss = SpreadsheetApp.getActive();
   const azul = '#1F3A4D';
+  ss.setSpreadsheetTimeZone('Europe/Lisbon');
 
   const cons = ss.getSheetByName(SHEET_CONSULTORES) || ss.insertSheet(SHEET_CONSULTORES);
   if (cons.getLastRow() === 0) {
