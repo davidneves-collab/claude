@@ -3,7 +3,7 @@
  *
  * Colar em: Google Sheet > Extensões > Apps Script, guardar e recarregar a folha.
  * Aparece o menu "Produção" com:
- *   1. Configurar folha (só na 1.ª vez): cria separadores, listas e formatação.
+ *   1. Configurar folha / aplicar tema: cria separadores, listas e o tema Terrae.
  *   2. Enviar agendamento ao consultor: para a(s) linha(s) selecionada(s), cria o
  *      evento na tua agenda com o consultor como convidado (fica nas duas agendas)
  *      e envia-lhe um email com o link do script, o local e a data.
@@ -16,15 +16,26 @@ const SHEET_SERVICOS = 'Servicos';
 const LINHAS = 500;
 const ESTADOS = ['Iniciado', 'Em tratamento', 'Concluído'];
 const SERVICOS = [
-  'Filmagem — Imóvel (tour)',
-  'Filmagem — Apresentação do consultor',
-  'Filmagem — Reel / redes sociais',
-  'Filmagem — Testemunho de cliente',
-  'Filmagem — Drone',
-  'Fotografia — Imóvel',
-  'Fotografia — Retrato do consultor',
-  'Fotografia + Filmagem — Imóvel',
+  'Total (posicionamento de marca + consultor)',
+  'Marca Pessoal',
+  'Marca Terrae',
+  'Campanhas',
+  'Imóvel (tour)',
+  'Apenas Drone',
 ];
+
+// Paleta Terrae (cores oficiais e variações claras)
+const COR = {
+  ink: '#1D1D1B',
+  sand: '#E4DDD3',
+  sandLight: '#ECE5DA',
+  sandSoft: '#F2EDE5',
+  sage: '#8A8E75',
+  sageClaro: '#DCDDD5',
+  sienna: '#976E53',
+  siennaClaro: '#E5DBD4',
+};
+const FONTE = 'Manrope';
 
 // Colunas da folha Agendamentos (1 = A)
 const COL = {
@@ -53,7 +64,7 @@ function criarMenu() {
     .addItem('Enviar agendamento ao consultor', 'enviarSelecionados')
     .addItem('Atualizar evento (data/hora/local)', 'atualizarSelecionados')
     .addSeparator()
-    .addItem('Configurar folha (1.ª vez)', 'configurar')
+    .addItem('Configurar folha / aplicar tema', 'configurar')
     .addToUi();
 }
 
@@ -61,24 +72,23 @@ function criarMenu() {
 
 function configurar() {
   const ss = SpreadsheetApp.getActive();
-  const azul = '#1F3A4D';
   ss.setSpreadsheetTimeZone('Europe/Lisbon');
 
   const cons = ss.getSheetByName(SHEET_CONSULTORES) || ss.insertSheet(SHEET_CONSULTORES);
   if (cons.getLastRow() === 0) {
     cons.getRange(1, 1, 2, 2).setValues([['Nome', 'Email'], ['(exemplo) Nome do consultor', 'consultor@exemplo.pt']]);
   }
-  formatarCabecalho(cons.getRange(1, 1, 1, 2), azul);
+  aplicarTema(cons, 2, 200);
   cons.setColumnWidths(1, 2, 260);
-  cons.setFrozenRows(1);
+  cons.setTabColor(COR.sage);
 
+  // A lista de serviços vem do código: atualizar aqui e voltar a correr "Configurar"
   const serv = ss.getSheetByName(SHEET_SERVICOS) || ss.insertSheet(SHEET_SERVICOS);
-  if (serv.getLastRow() === 0) {
-    serv.getRange(1, 1, SERVICOS.length + 1, 1).setValues([['Tipo de serviço']].concat(SERVICOS.map(s => [s])));
-  }
-  formatarCabecalho(serv.getRange(1, 1, 1, 1), azul);
-  serv.setColumnWidth(1, 300);
-  serv.setFrozenRows(1);
+  serv.getRange(1, 1, Math.max(serv.getMaxRows(), 1), 1).clearContent();
+  serv.getRange(1, 1, SERVICOS.length + 1, 1).setValues([['Tipo de serviço']].concat(SERVICOS.map(s => [s])));
+  aplicarTema(serv, 1, 50);
+  serv.setColumnWidth(1, 320);
+  serv.setTabColor(COR.sienna);
 
   let sh = ss.getSheetByName(SHEET);
   if (!sh) {
@@ -86,10 +96,10 @@ function configurar() {
     sh.setName(SHEET);
   }
   sh.getRange(1, 1, 1, CABECALHO.length).setValues([CABECALHO]);
-  formatarCabecalho(sh.getRange(1, 1, 1, CABECALHO.length), azul);
-  sh.setFrozenRows(1);
-  sh.setFrozenColumns(2);
   if (sh.getMaxRows() < LINHAS + 1) sh.insertRowsAfter(sh.getMaxRows(), LINHAS + 1 - sh.getMaxRows());
+  aplicarTema(sh, CABECALHO.length, LINHAS);
+  sh.setFrozenColumns(2);
+  sh.setTabColor(COR.ink);
 
   const n = LINHAS;
   const lista = (range) => SpreadsheetApp.newDataValidation().requireValueInRange(range, true).setAllowInvalid(false).build();
@@ -109,19 +119,20 @@ function configurar() {
 
   // Cores do estado
   const est = sh.getRange(2, COL.estado, n);
-  const regra = (txt, cor) => SpreadsheetApp.newConditionalFormatRule().whenTextEqualTo(txt).setBackground(cor).setRanges([est]).build();
+  const regra = (txt, fundo, letra) => SpreadsheetApp.newConditionalFormatRule()
+    .whenTextEqualTo(txt).setBackground(fundo).setFontColor(letra).setRanges([est]).build();
   sh.setConditionalFormatRules([
-    regra('Iniciado', '#FFF2CC'),
-    regra('Em tratamento', '#DDEBF7'),
-    regra('Concluído', '#D9EAD3'),
+    regra('Iniciado', COR.siennaClaro, COR.sienna),
+    regra('Em tratamento', COR.sageClaro, COR.ink),
+    regra('Concluído', COR.sage, COR.sandSoft),
   ]);
 
   [70, 180, 220, 230, 220, 95, 60, 90, 280, 280, 120, 240, 140, 160]
     .forEach((w, i) => sh.setColumnWidth(i + 1, w));
   sh.getRange(1, COL.email).setNote('Preenchido automaticamente ao escolher o consultor. Para mudar, edita o separador Consultores.');
   sh.getRange(1, COL.evento).setNote('Preenchido pelo script. Não editar.');
-  sh.getRange(2, COL.evento, n).setFontColor('#999999');
-  sh.getRange(2, COL.email, n).setFontColor('#555555');
+  sh.getRange(2, COL.evento, n).setFontColor(COR.sage);
+  sh.getRange(2, COL.email, n).setFontColor(COR.sienna);
 
   SpreadsheetApp.getUi().alert(
     'Folha configurada.\n\n1) Preenche o separador "Consultores" (nome + email).\n' +
@@ -129,8 +140,20 @@ function configurar() {
     '3) Para enviar: seleciona a linha e usa Produção > Enviar agendamento ao consultor.');
 }
 
-function formatarCabecalho(range, cor) {
-  range.setFontWeight('bold').setFontColor('#FFFFFF').setBackground(cor).setVerticalAlignment('middle').setWrap(true);
+// Tema Terrae: cabeçalho Ink, linhas alternadas em tons de areia, letra Manrope
+function aplicarTema(folha, colunas, linhas) {
+  const total = folha.getRange(1, 1, linhas + 1, colunas);
+  folha.getBandings().forEach(b => b.remove());
+  total.applyRowBanding()
+    .setHeaderRowColor(COR.ink)
+    .setFirstRowColor(COR.sandSoft)
+    .setSecondRowColor(COR.sandLight);
+  total.setFontFamily(FONTE).setFontSize(10).setFontColor(COR.ink).setVerticalAlignment('middle');
+  folha.getRange(1, 1, 1, colunas)
+    .setFontColor(COR.sand).setFontWeight('normal').setFontSize(10).setWrap(true);
+  folha.setRowHeight(1, 40);
+  folha.setRowHeights(2, linhas, 28);
+  folha.setFrozenRows(1);
 }
 
 /* ---------- Email do consultor ---------- */
