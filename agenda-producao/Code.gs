@@ -37,6 +37,16 @@ const COR = {
 };
 const FONTE = 'Manrope';
 
+// Email: remetente, assinatura e logótipos (IDs de ficheiros PNG no Google Drive).
+// O ID é a parte do link entre /d/ e /view. Sem ID, o email segue sem logótipo.
+const EMAIL = {
+  remetente: 'David Neves · Produção Terrae',
+  assinaturaNome: 'David Neves',
+  assinaturaCargo: 'Produção Terrae',
+  logoCabecalho: '', // versão clara do logótipo, para o fundo escuro do cabeçalho
+  logoAssinatura: '', // versão escura do logótipo, para a assinatura em fundo claro
+};
+
 // Colunas da folha Agendamentos (1 = A)
 const COL = {
   id: 1, consultor: 2, email: 3, servico: 4, local: 5, data: 6, hora: 7, duracao: 8,
@@ -300,10 +310,14 @@ function enviarLinha(sh, r, v) {
     sh.getRange(r, COL.evento).setValue(ev.getId());
   }
 
+  const imagens = logotipos();
   MailApp.sendEmail({
     to: email,
+    name: EMAIL.remetente,
     subject: `Agendamento: ${servico}, ${formatarData(h.inicio, !h.diaInteiro)}`,
-    htmlBody: emailHtml(v, h),
+    body: descricaoEvento(v),
+    htmlBody: emailHtml(v, h, imagens),
+    inlineImages: imagens,
   });
 
   sh.getRange(r, COL.enviado).setValue(new Date());
@@ -349,26 +363,103 @@ function descricaoEvento(v) {
   ].filter(Boolean).join('\n');
 }
 
-function emailHtml(v, h) {
-  const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
-  const link = (url, txt) => `<a href="${esc(url)}">${esc(txt)}</a>`;
-  const linha = (k, val) => `<tr><td style="padding:4px 12px 4px 0;color:#666">${k}</td><td style="padding:4px 0"><b>${val}</b></td></tr>`;
+// Lê os logótipos do Drive para irem embutidos no email (cid:logoCabecalho, cid:logoAssinatura)
+function logotipos() {
+  const imagens = {};
+  ['logoCabecalho', 'logoAssinatura'].forEach(chave => {
+    if (!EMAIL[chave]) return;
+    try {
+      imagens[chave] = DriveApp.getFileById(EMAIL[chave]).getBlob().setName(chave);
+    } catch (e) {
+      console.warn(`Logótipo ${chave} não encontrado: ${e.message}`);
+    }
+  });
+  return imagens;
+}
+
+// Email no visual Terrae: fundo areia, cabeçalho Ink, Manrope, sem negrito
+function emailHtml(v, h, imagens) {
+  const esc = s => String(s || '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  const fonte = "'Manrope', 'Helvetica Neue', Helvetica, Arial, sans-serif";
+  const titulo = "'Arya', Georgia, 'Times New Roman', serif";
+  const caps = `font-family:${fonte};font-size:11px;letter-spacing:0.18em;text-transform:uppercase;color:${COR.sage};font-weight:500;`;
+
+  const linha = (k, val) => `
+    <tr>
+      <td style="padding:14px 0;border-top:1px solid ${COR.sand};${caps}width:130px;vertical-align:top;">${k}</td>
+      <td style="padding:14px 0;border-top:1px solid ${COR.sand};font-family:${fonte};font-size:15px;color:${COR.ink};font-weight:400;">${val}</td>
+    </tr>`;
+
+  const botao = (url, txt, principal) => `
+    <td style="padding:0 12px 12px 0;">
+      <a href="${esc(url)}" style="display:inline-block;padding:14px 26px;font-family:${fonte};font-size:13px;letter-spacing:0.08em;
+        text-decoration:none;font-weight:500;border:1px solid ${COR.ink};
+        ${principal ? `background:${COR.ink};color:${COR.sandSoft};` : `background:transparent;color:${COR.ink};`}">${esc(txt)}</a>
+    </td>`;
+
+  const cabecalho = imagens.logoCabecalho
+    ? `<img src="cid:logoCabecalho" alt="Terrae" height="40" style="display:block;height:40px;border:0;">`
+    : `<span style="${caps}color:${COR.sand};">Terrae</span>`;
+
+  const logoAssinatura = imagens.logoAssinatura
+    ? `<td style="padding-right:18px;vertical-align:middle;"><img src="cid:logoAssinatura" alt="Terrae" height="44" style="display:block;height:44px;border:0;"></td>`
+    : '';
+
   return `
-  <div style="font-family:Arial,sans-serif;font-size:14px;color:#222">
-    <p>Olá ${esc(v[COL.consultor - 1])},</p>
-    <p>O script foi aprovado e o serviço ficou agendado. Os detalhes estão abaixo.
-       O evento já está na tua agenda Google.</p>
-    <table style="border-collapse:collapse">
-      ${linha('Serviço', esc(v[COL.servico - 1]))}
-      ${linha('Data', esc(formatarData(h.inicio, !h.diaInteiro)))}
-      ${linha('Local', esc(v[COL.local - 1] || 'a definir'))}
-      ${linha('Script', link(v[COL.script - 1], 'Abrir script / roteiro'))}
-      ${v[COL.pasta - 1] ? linha('Produto final', link(v[COL.pasta - 1], 'Pasta do produto final')) : ''}
-      ${v[COL.notas - 1] ? linha('Notas', esc(v[COL.notas - 1])) : ''}
-      ${linha('Ref.', esc(v[COL.id - 1]))}
+<!doctype html>
+<html lang="pt-PT"><head><meta charset="utf-8">
+<link href="https://fonts.googleapis.com/css2?family=Arya&family=Manrope:wght@400;500&display=swap" rel="stylesheet">
+</head>
+<body style="margin:0;padding:0;background:${COR.sand};">
+<table role="presentation" width="100%" cellpadding="0" cellspacing="0" style="background:${COR.sand};">
+  <tr><td align="center" style="padding:32px 16px;">
+    <table role="presentation" width="600" cellpadding="0" cellspacing="0" style="max-width:600px;width:100%;background:${COR.sandSoft};">
+
+      <tr><td style="background:${COR.ink};padding:28px 40px;">${cabecalho}</td></tr>
+
+      <tr><td style="padding:44px 40px 8px 40px;">
+        <div style="${caps}">Agendamento de produção · ${esc(v[COL.id - 1])}</div>
+        <div style="font-family:${titulo};font-size:30px;line-height:1.2;color:${COR.ink};font-weight:400;padding:14px 0 22px 0;">${esc(v[COL.servico - 1])}</div>
+        <p style="font-family:${fonte};font-size:15px;line-height:1.6;color:${COR.ink};margin:0 0 12px 0;">Olá ${esc(v[COL.consultor - 1])},</p>
+        <p style="font-family:${fonte};font-size:15px;line-height:1.6;color:${COR.ink};margin:0 0 28px 0;">
+          O script foi aprovado e a produção ficou agendada. O evento já está na tua agenda Google.</p>
+      </td></tr>
+
+      <tr><td style="padding:0 40px;">
+        <table role="presentation" width="100%" cellpadding="0" cellspacing="0">
+          ${linha('Data', esc(formatarData(h.inicio, !h.diaInteiro)))}
+          ${linha('Local', esc(v[COL.local - 1] || 'A definir'))}
+          ${v[COL.notas - 1] ? linha('Notas', esc(v[COL.notas - 1])) : ''}
+          <tr><td colspan="2" style="border-top:1px solid ${COR.sand};font-size:0;line-height:0;">&nbsp;</td></tr>
+        </table>
+      </td></tr>
+
+      <tr><td style="padding:24px 40px 12px 40px;">
+        <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+          ${botao(v[COL.script - 1], 'Abrir script', true)}
+          ${v[COL.pasta - 1] ? botao(v[COL.pasta - 1], 'Pasta do produto final', false) : ''}
+        </tr></table>
+      </td></tr>
+
+      <tr><td style="padding:12px 40px 36px 40px;">
+        <p style="font-family:${fonte};font-size:15px;line-height:1.6;color:${COR.ink};margin:0;">
+          Lê o script antes do dia. Qualquer dúvida, responde a este email.</p>
+      </td></tr>
+
+      <tr><td style="padding:28px 40px 40px 40px;border-top:1px solid ${COR.sand};">
+        <table role="presentation" cellpadding="0" cellspacing="0"><tr>
+          ${logoAssinatura}
+          <td style="vertical-align:middle;">
+            <div style="font-family:${fonte};font-size:15px;color:${COR.ink};font-weight:500;">${esc(EMAIL.assinaturaNome)}</div>
+            <div style="${caps}padding-top:4px;">${esc(EMAIL.assinaturaCargo)}</div>
+          </td>
+        </tr></table>
+      </td></tr>
+
     </table>
-    <p>Lê o script antes do dia. Qualquer dúvida, responde a este email.</p>
-  </div>`;
+  </td></tr>
+</table>
+</body></html>`;
 }
 
 function formatarData(d, comHora) {
