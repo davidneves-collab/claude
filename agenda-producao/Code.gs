@@ -102,6 +102,7 @@ function configurar() {
   sh.setTabColor(COR.ink);
 
   const n = LINHAS;
+  sh.getRange(2, 1, n, CABECALHO.length).clearDataValidations(); // remove listas fora do sítio
   const lista = (range) => SpreadsheetApp.newDataValidation().requireValueInRange(range, true).setAllowInvalid(false).build();
   sh.getRange(2, COL.consultor, n).setDataValidation(lista(cons.getRange('A2:A200')));
   sh.getRange(2, COL.servico, n).setDataValidation(lista(serv.getRange('A2:A100')));
