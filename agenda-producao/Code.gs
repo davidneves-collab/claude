@@ -207,6 +207,7 @@ function processarSelecao(soAtualizar) {
     const v = sh.getRange(r, 1, 1, CABECALHO.length).getValues()[0];
     if (!v[COL.consultor - 1]) continue;
     v[COL.email - 1] = emailDe(v[COL.consultor - 1]);
+    v.horaTexto = sh.getRange(r, COL.hora).getDisplayValue();
     sh.getRange(r, COL.email).setValue(v[COL.email - 1]);
     try {
       if (soAtualizar) {
@@ -237,10 +238,12 @@ function validar(v) {
 
 function horario(v) {
   const data = v[COL.data - 1];
-  const hora = v[COL.hora - 1];
-  if (!(hora instanceof Date)) return { diaInteiro: true, inicio: data };
+  // A hora é lida como texto ("10:00"): ler a célula como Date dá minutos
+  // errados (fuso de Lisboa de 1899).
+  const m = String(v.horaTexto || '').match(/(\d{1,2})[:h](\d{2})/);
+  if (!m) return { diaInteiro: true, inicio: data };
   const inicio = new Date(data);
-  inicio.setHours(hora.getHours(), hora.getMinutes(), 0, 0);
+  inicio.setHours(Number(m[1]), Number(m[2]), 0, 0);
   const dur = Number(v[COL.duracao - 1]) || 120;
   return { diaInteiro: false, inicio, fim: new Date(inicio.getTime() + dur * 60000) };
 }
