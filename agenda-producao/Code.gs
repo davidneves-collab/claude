@@ -37,14 +37,11 @@ const COR = {
 };
 const FONTE = 'Manrope';
 
-// Email: remetente, assinatura e logótipos (IDs de ficheiros PNG no Google Drive).
-// O ID é a parte do link entre /d/ e /view. Sem ID, o email segue sem logótipo.
+// Email: remetente e assinatura
 const EMAIL = {
   remetente: 'David Neves · Produção Terrae',
   assinaturaNome: 'David Neves',
   assinaturaCargo: 'Produção Terrae',
-  logoCabecalho: '', // versão clara do logótipo, para o fundo escuro do cabeçalho
-  logoAssinatura: '', // versão escura do logótipo, para a assinatura em fundo claro
 };
 
 // Colunas da folha Agendamentos (1 = A)
@@ -363,18 +360,13 @@ function descricaoEvento(v) {
   ].filter(Boolean).join('\n');
 }
 
-// Lê os logótipos do Drive para irem embutidos no email (cid:logoCabecalho, cid:logoAssinatura)
+// Logótipo oficial Terrae (PNG em base64), versão Sand para o cabeçalho e Ink para a assinatura
+const LOGO_CLARO = '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';
+const LOGO_ESCURO = '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';
+
 function logotipos() {
-  const imagens = {};
-  ['logoCabecalho', 'logoAssinatura'].forEach(chave => {
-    if (!EMAIL[chave]) return;
-    try {
-      imagens[chave] = DriveApp.getFileById(EMAIL[chave]).getBlob().setName(chave);
-    } catch (e) {
-      console.warn(`Logótipo ${chave} não encontrado: ${e.message}`);
-    }
-  });
-  return imagens;
+  const blob = (b64, nome) => Utilities.newBlob(Utilities.base64Decode(b64), 'image/png', nome + '.png');
+  return { logoCabecalho: blob(LOGO_CLARO, 'terrae-claro'), logoAssinatura: blob(LOGO_ESCURO, 'terrae-escuro') };
 }
 
 // Email no visual Terrae: fundo areia, cabeçalho Ink, Manrope, sem negrito
@@ -402,7 +394,7 @@ function emailHtml(v, h, imagens) {
     : `<span style="${caps}color:${COR.sand};">Terrae</span>`;
 
   const logoAssinatura = imagens.logoAssinatura
-    ? `<td style="padding-right:18px;vertical-align:middle;"><img src="cid:logoAssinatura" alt="Terrae" height="44" style="display:block;height:44px;border:0;"></td>`
+    ? `<td style="padding-right:22px;margin-right:0;vertical-align:middle;border-right:1px solid #E4DDD3;"><img src="cid:logoAssinatura" alt="Terrae" height="32" style="display:block;height:32px;border:0;"></td>`
     : '';
 
   return `
@@ -449,7 +441,7 @@ function emailHtml(v, h, imagens) {
       <tr><td style="padding:28px 40px 40px 40px;border-top:1px solid ${COR.sand};">
         <table role="presentation" cellpadding="0" cellspacing="0"><tr>
           ${logoAssinatura}
-          <td style="vertical-align:middle;">
+          <td style="vertical-align:middle;padding-left:22px;">
             <div style="font-family:${fonte};font-size:15px;color:${COR.ink};font-weight:500;">${esc(EMAIL.assinaturaNome)}</div>
             <div style="${caps}padding-top:4px;">${esc(EMAIL.assinaturaCargo)}</div>
           </td>
