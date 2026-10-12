@@ -49,6 +49,9 @@ const EMAIL = {
   logoCabecalhoDrive: '1jiKZAJK-MYCd52Y6lfp_3jlQDEijr4bV', // terrae-logo-claro.png no Drive
 };
 
+// Pessoas em CC em todos os agendamentos (recebem o email e ficam convidadas no evento)
+const CC = ['sandro.sousa@terrae.pt', 'nuno.santos@terrae.pt'];
+
 // Pasta "AGENDA DE PRODUÇÃO" no Drive: cada ID ganha aqui uma subpasta
 const PASTA_PRINCIPAL = '1sTR7K1AE5Oi_lzb-b9BS5oR5F4aBnpyq';
 
@@ -384,10 +387,10 @@ function enviarLinha(sh, r, v) {
   if (ev) {
     aplicarHorario(ev, h);
     ev.setTitle(titulo).setLocation(local).setDescription(descricao);
-    if (!ev.getGuestByEmail(email)) ev.addGuest(email);
+    [email].concat(CC).forEach(g => { if (!ev.getGuestByEmail(g)) ev.addGuest(g); });
   } else {
     // Sem o convite automático do Google (não leva assinatura): os detalhes vão no nosso email
-    const opts = { location: local, description: descricao, guests: email, sendInvites: false };
+    const opts = { location: local, description: descricao, guests: [email].concat(CC).join(','), sendInvites: false };
     ev = h.diaInteiro
       ? cal.createAllDayEvent(titulo, h.inicio, opts)
       : cal.createEvent(titulo, h.inicio, h.fim, opts);
@@ -397,6 +400,7 @@ function enviarLinha(sh, r, v) {
   const imagens = logotipos();
   MailApp.sendEmail({
     to: email,
+    cc: CC.join(','),
     name: EMAIL.remetente,
     subject: `Agendamento: ${servico}, ${formatarData(h.inicio, !h.diaInteiro)}`,
     body: descricaoEvento(v),
