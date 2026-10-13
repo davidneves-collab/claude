@@ -88,6 +88,7 @@ function criarMenu() {
     .createMenu('Produção')
     .addItem('Enviar agendamento ao consultor', 'enviarSelecionados')
     .addItem('Atualizar evento (data/hora/local)', 'atualizarSelecionados')
+    .addItem('Dar acesso ao consultor (pasta e script)', 'acessoSelecionados')
     .addSeparator()
     .addItem('Configurar folha / aplicar tema', 'configurar')
     .addToUi();
@@ -286,32 +287,60 @@ function garantirPasta(sh, r, v) {
   const nome = `${v[COL.id - 1]} · ${v[COL.consultor - 1]} · ${v[COL.servico - 1]}`;
   const existentes = principal.getFoldersByName(nome);
   const pasta = existentes.hasNext() ? existentes.next() : principal.createFolder(nome);
-  partilharSemAviso(pasta.getId(), v[COL.email - 1]);
   sh.getRange(r, COL.pasta).setValue(pasta.getUrl());
   v[COL.pasta - 1] = pasta.getUrl();
 }
 
-// Dá acesso de leitura sem o email automático do Google (não leva assinatura).
-// Precisa do serviço "Drive API" ativo no editor (Serviços > + > Drive API).
-function partilharSemAviso(idPasta, email) {
+// Dá ao consultor acesso à pasta do projeto e ao script (Google Doc).
+// Devolve um resumo para a mensagem final.
+function darAcesso(v) {
+  const email = v[COL.email - 1];
+  return [['pasta', v[COL.pasta - 1]], ['script', v[COL.script - 1]]]
+    .filter(([, link]) => link)
+    .map(([nome, link]) => `${nome}: ${partilhar(idDoLink(link), email)}`)
+    .join(', ');
+}
+
+function idDoLink(link) {
+  const m = String(link).match(/[-\w]{25,}/);
+  return m ? m[0] : null;
+}
+
+// Tenta primeiro sem o email automático do Google (não leva assinatura).
+// Se não for possível (ex.: email que não é conta Google), partilha na mesma com o aviso do Google.
+function partilhar(id, email) {
+  if (!id) return 'link inválido';
   try {
-    Drive.Permissions.create({ role: 'reader', type: 'user', emailAddress: email }, idPasta, { sendNotificationEmail: false });
-  } catch (err) {
-    console.warn(`Pasta não partilhada com ${email}: ${err.message}`);
+    Drive.Permissions.create({ role: 'reader', type: 'user', emailAddress: email }, id,
+      { sendNotificationEmail: false, supportsAllDrives: true });
+    return 'acesso dado';
+  } catch (e1) {
+    console.warn(`Partilha sem aviso falhou (${id}): ${e1.message}`);
+  }
+  try {
+    DriveApp.getFileById(id).addViewer(email);
+    return 'acesso dado (com aviso do Google)';
+  } catch (e2) {
+    console.error(`Partilha falhou (${id}): ${e2.message}`);
+    return 'SEM ACESSO, ' + e2.message;
   }
 }
 
 /* ---------- Envio ---------- */
 
 function enviarSelecionados() {
-  processarSelecao(false);
+  processarSelecao('enviar');
 }
 
 function atualizarSelecionados() {
-  processarSelecao(true);
+  processarSelecao('atualizar');
 }
 
-function processarSelecao(soAtualizar) {
+function acessoSelecionados() {
+  processarSelecao('acesso');
+}
+
+function processarSelecao(modo) {
   const ui = SpreadsheetApp.getUi();
   const sh = SpreadsheetApp.getActive().getSheetByName(SHEET);
   const sel = sh.getActiveRange();
@@ -331,8 +360,10 @@ function processarSelecao(soAtualizar) {
     v.horaTexto = sh.getRange(r, COL.hora).getDisplayValue();
     sh.getRange(r, COL.email).setValue(v[COL.email - 1]);
     try {
-      if (soAtualizar) {
+      if (modo === 'atualizar') {
         resultados.push(`Linha ${r}: ${atualizarLinha(sh, r, v)}`);
+      } else if (modo === 'acesso') {
+        resultados.push(`Linha ${r}: ${darAcesso(v) || 'sem pasta nem script'}`);
       } else {
         if (v[COL.enviado - 1]) {
           const resp = ui.alert(`A linha ${r} já foi enviada em ${formatarData(v[COL.enviado - 1], true)}. Enviar novamente?`, ui.ButtonSet.YES_NO);
@@ -373,6 +404,7 @@ function enviarLinha(sh, r, v) {
   validar(v);
   garantirId(sh, r, v);
   garantirPasta(sh, r, v);
+  const acesso = darAcesso(v);
 
   const consultor = v[COL.consultor - 1];
   const email = v[COL.email - 1];
@@ -410,7 +442,7 @@ function enviarLinha(sh, r, v) {
 
   sh.getRange(r, COL.enviado).setValue(new Date());
   if (!v[COL.estado - 1]) sh.getRange(r, COL.estado).setValue('Iniciado');
-  return `enviado a ${email}`;
+  return `enviado a ${email} (${acesso})`;
 }
 
 function atualizarLinha(sh, r, v) {
