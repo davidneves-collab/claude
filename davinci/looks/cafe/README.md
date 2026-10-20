@@ -13,3 +13,8 @@ Feita a partir de um reel de referência com versão log e versão gradeada (wip
 Suposição: a referência foi filmada em Sony S-Log3 / S-Gamut3.Cine (não confirmado).
 Instalar no Mac em `/Library/Application Support/Blackmagic Design/DaVinci Resolve/LUT/Terrae/`.
 6. v3: `meas.py` (croma por zona de luz), `makelut3.py <extra> <saida.cube>` sobre a v2 → `Look_Cafe_v3.cube` (medida) e `Look_Cafe_v3_Forte.cube` (saturação extra ×1.2 nos médios/sombras); `comparacao_v3.jpg`.
+7. **v4 (método correto):** `wipepairs.py` usa a cortina do vídeo — o mesmo píxel está em log no frame t e gradeado no t+1
+   (1/30 s), dando 1,77 M pares exatos em todos os planos. `fit4.py`/`m4.py`: curva de tons monótona + matriz de cor 3x3 por
+   zona de luz (ridge) em espaço descodificado + grelha 3D de correção (`m4corr.npy`). `makelut4.py` → `Look_Cafe_v4.cube`.
+   `comparacao_v4_cortina.jpg`: à esquerda da linha amarela o original, à direita a LUT aplicada ao log do mesmo frame.
+   As v1–v3 comparavam frames de momentos diferentes e ajustavam por distribuição (confundia a cor dos objetos com o grade).
