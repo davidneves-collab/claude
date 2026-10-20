@@ -1,7 +1,7 @@
 import numpy as np,sys,json
-sys.path.insert(0,sys.argv[1]); from colormath import *
+import os; sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); from colormath import *
 from scipy.interpolate import PchipInterpolator
-m=json.load(open(sys.argv[1]+"/model.json"))
+m=json.load(open(os.path.join(os.path.dirname(os.path.abspath(__file__)),"model.json")))
 curve=PchipInterpolator(m['X'],m['Y']); Mc=np.array(m['Mc']); off=np.array(m['off']); e=np.array(m['edges'])
 def look_from_neutral(N,strength=1.0):
     Ny=N@LW; cN=N-Ny[...,None]
