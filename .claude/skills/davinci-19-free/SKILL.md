@@ -21,7 +21,7 @@ Todas em Python 3; precisam de `pip install zstandard` (PowerGrades e .drp) e, p
 | `drp_to_drfx.py entrada.drp saida.drfx "Pasta"` | Projeto com animações em camadas (1 timeline = 1 título) → .drfx, recria keyframes do Inspector e Drop Shadow do clip |
 | `powergrade_inspect.py ficheiro.drx` | Lista nós, ResolveFX, LUTs e separadores de um PowerGrade |
 | `powergrade_free.py entrada.drx saida.drx` | Retira ferramentas Studio (nós ficam vazios), etiqueta + " FREE" |
-| `powergrade_cst.py entrada.drx saida.drx "CST IN" inputColorSpace=X inputGamma=Y [--label …]` | Muda os valores de um nó CST (só parâmetros que já existem no nó) |
+| `powergrade_cst.py entrada.drx saida.drx "CST IN" inputColorSpace=X … [--node "" …] [--replace "a=>b"] [--label …]` | Muda os valores de nós CST (também dentro de compostos) e troca textos exatos (caminho de LUT, nome de nó) |
 | `validate_setting.py pasta/` | Verifica sintaxe Lua dos .setting (com `lupa`) |
 | `pb.py`, `luaparse.py`, `curves.py`, `drfx_lib.py` | Bibliotecas: protobuf genérico, parser de tabelas Lua/Fusion, curvas de keyframes do Edit, montagem de macros |
 
@@ -54,4 +54,5 @@ Se aparecer uma ResolveFX desconhecida: perguntar ao utilizador antes de a retir
 - 20-10-2026: Rec709 2.2.1 (DbAppVer 20.0) → "2.2 FREE" (Halation, Glow, Film Grain). CST IN = Rec.709/Rec.709 → DWG/DaVinci Intermediate; CST OUT = DWG/DI → Rec.709/Gamma 2.4; composto LUTS com CST Rec.709/2.4 → Cineon antes das LUTs 2383 e 3513DI. Miniatura: .dpx com o mesmo nome do .drx.
 - Câmara: **Canon EOS R50 V** (C-Log3; espaço de cor Cinema Gamut, BT.2020 ou BT.709 — confirmar qual usa).
 - O utilizador passou para o **DaVinci 21 free** num MacBook Pro M1 16 GB (20-10-2026). Capta em Canon **C-Log3** e em **Rec.709** direto da câmara: quer duas versões de cada PowerGrade (CST IN diferente).
+- 20-10-2026: **Look Café** a partir de um reel com log/gradeado (wipe): LUT `davinci/looks/cafe/Look_Cafe_v1.cube` (DWG/DI → DWG/DI) metida no nó 2383 do composto LUTS do 2.2 FREE (CST interno passou a identidade DWG/DI). Caminho da LUT no .drx: `Terrae/Look_Cafe_v1.cube` (relativo à pasta LUT do DaVinci) — **por confirmar** se o DaVinci a encontra. Nós desligados parecem ter a entrada 3221225473 do campo 10 com valor 0 (ligados = 2) — por confirmar.
 - Os ficheiros originais e convertidos são packs comprados pelo utilizador: **não** os guardar no repositório.

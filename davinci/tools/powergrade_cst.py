@@ -1,7 +1,10 @@
 """Muda parâmetros do Color Space Transform (CST) de um nó de um PowerGrade (.drx).
 
 Uso: python3 powergrade_cst.py entrada.drx saida.drx "CST IN" inputColorSpace=X inputGamma=Y [--label "2.2 C-Log3 FREE"]
+     [--node "OUTRO NÓ" param=valor ...] [--replace "texto antigo=>texto novo"]
 Só altera parâmetros que já existem no nó (valores em texto, ex. REC709_COLORSPACE).
+Procura também dentro de nós compostos. Um nó sem nome escreve-se "". --replace troca um texto exato
+(ex. caminho de uma LUT ou nome de um nó) em todo o grade.
 """
 import sys,re,zstandard
 import os; sys.path.insert(0,os.path.dirname(os.path.abspath(__file__))); from pb import varint
@@ -51,31 +54,62 @@ def set_param(buf,name,value):
         out.append((f,w,ks,p))
     return build(out),n
 
+def replace_str(buf,old,new):
+    """Troca recursivamente um campo de texto cujo conteúdo é exatamente old."""
+    if old not in buf: return buf,0
+    try: fs=fields(buf)
+    except Exception: return buf,0
+    if build(fs)!=buf: return buf,0
+    n=0; out=[]
+    for f,w,ks,p in fs:
+        if w==2 and p==old: p=new; n+=1
+        elif w==2: p,k=replace_str(p,old,new); n+=k
+        out.append((f,w,ks,p))
+    return build(out),n
+
 def main():
-    a=sys.argv[1:]; label=None
-    if "--label" in a: i=a.index("--label"); label=a[i+1]; del a[i:i+2]
-    src,dst,node_name=a[0],a[1],a[2].encode()
-    params=[x.split("=",1) for x in a[3:]]
+    a=sys.argv[1:]; label=None; reps=[]
+    while "--label" in a: i=a.index("--label"); label=a[i+1]; del a[i:i+2]
+    while "--replace" in a: i=a.index("--replace"); reps.append([x.encode() for x in a[i+1].split("=>",1)]); del a[i:i+2]
+    src,dst=a[0],a[1]; jobs=[]; cur=None
+    for x in a[2:]:
+        if x=="--node": continue
+        if "=" in x and cur is not None: cur[1].append(x.split("=",1))
+        else: cur=[x.encode(),[]]; jobs.append(cur)
     t=open(src).read()
     m=re.search(r"(<pClipFullVer>.*?<Body>)([0-9a-f]+)(</Body>)",t,re.S)
     raw=bytes.fromhex(m.group(2)); k=raw.find(b"\x28\xb5\x2f\xfd"); prefix=raw[:k]
     d=zstandard.ZstdDecompressor().decompress(raw[k:],max_output_size=10**8)
-    hits=0
+    found=set(); hits=0
     def fix(node):
         nonlocal hits
-        if not any(f==6 and p==node_name for f,w,ks,p in fields(node)): return node
-        for pname,val in params:
-            node,n=set_param(node,pname.encode(),val)
-            if n==0: sys.exit(f"parâmetro {pname} não encontrado no nó {node_name.decode()}")
-            hits+=n
-        return node
-    newtop=[]
-    for f,w,ks,p in fields(d):
-        if f==1 and w==2:
-            p=build([(f2,w2,ks2,fix(p2) if f2==7 and w2==2 else p2) for f2,w2,ks2,p2 in fields(p)])
-        newtop.append((f,w,ks,p))
-    if not hits: sys.exit(f"nó {node_name.decode()} não encontrado")
-    comp=zstandard.ZstdCompressor(level=19,write_content_size=True).compress(build(newtop))
+        nfs=fields(node); name=b"".join(p for f,w,ks,p in nfs if f==6)
+        for jname,params in jobs:
+            if name!=jname or not params: continue
+            if b"colorspacetransform" not in node: continue
+            for pname,val in params:
+                node,n=set_param(node,pname.encode(),val)
+                if n==0: sys.exit(f"parâmetro {pname} não encontrado no nó {jname.decode()!r}")
+                hits+=n
+            found.add(jname)
+        out=[]
+        for f,w,ks,p in fields(node):
+            if f==11 and w==2:
+                try: p=graph(p)
+                except Exception: pass
+            out.append((f,w,ks,p))
+        return build(out)
+    def graph(g):
+        return build([(f,w,ks,fix(p) if f==7 and w==2 else p) for f,w,ks,p in fields(g)])
+    newtop=[(f,w,ks,graph(p) if f==1 and w==2 else p) for f,w,ks,p in fields(d)]
+    for jname,params in jobs:
+        if params and jname not in found: sys.exit(f"nó {jname.decode()!r} com CST não encontrado")
+    body=build(newtop)
+    for old,new in reps:
+        body,n=replace_str(body,old,new)
+        if n==0: sys.exit(f"texto {old.decode()!r} não encontrado")
+        hits+=n
+    comp=zstandard.ZstdCompressor(level=19,write_content_size=True).compress(body)
     out=t[:m.start(2)]+(prefix+comp).hex()+t[m.end(2):]
     if label: out=re.sub(r"<Label>[^<]*</Label>","<Label>"+label+"</Label>",out,count=1)
     open(dst,"w").write(out)
