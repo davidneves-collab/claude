@@ -12,3 +12,4 @@ Feita a partir de um reel de referência com versão log e versão gradeada (wip
 
 Suposição: a referência foi filmada em Sony S-Log3 / S-Gamut3.Cine (não confirmado).
 Instalar no Mac em `/Library/Application Support/Blackmagic Design/DaVinci Resolve/LUT/Terrae/`.
+6. v3: `meas.py` (croma por zona de luz), `makelut3.py <extra> <saida.cube>` sobre a v2 → `Look_Cafe_v3.cube` (medida) e `Look_Cafe_v3_Forte.cube` (saturação extra ×1.2 nos médios/sombras); `comparacao_v3.jpg`.
