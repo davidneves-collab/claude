@@ -1,12 +1,17 @@
 ---
-name: davinci-19-free
-description: Converter e ajustar ficheiros do DaVinci Resolve para o DaVinci 19 gratuito (Mac) do utilizador — bins .drb e projetos .drp de versões superiores com títulos/animações Fusion → pacote .drfx; PowerGrades .drx com ferramentas Studio (marca de água) → versão FREE; ajustar nós de PowerGrades. Usar sempre que aparecer .drb, .drp, .drx, .drfx, .setting, PowerGrade, "marca de água", "versão free", "nodes/nós" do DaVinci, ou "precisa de versão superior".
+name: davinci-free
+description: Ajustar ficheiros do DaVinci Resolve para a versão gratuita do utilizador (DaVinci 21 free, Mac; antes 19 free) — PowerGrades .drx com ferramentas Studio (marca de água) → versão FREE; ajustar nós de PowerGrades; converter bins .drb / projetos .drp de versões superiores com títulos Fusion → .drfx; legendar vídeos com estilos de títulos Fusion. Usar sempre que aparecer .drb, .drp, .drx, .drfx, .setting, PowerGrade, "marca de água", "versão free", "nodes/nós" do DaVinci, ou "precisa de versão superior".
 ---
 
-# DaVinci 19 Free — conversões e ajustes
+# DaVinci Free — conversões e ajustes
 
 ## Contexto do utilizador
-- DaVinci Resolve **19 gratuito**, **Mac**, interface em **português (BR)** (Galeria, Pool de Mídia, Aplicar Grade…).
+- DaVinci Resolve **21 gratuito** (instalado por volta de 23-10-2026; antes usava o 19 gratuito), **Mac**, interface em **português (BR)** (Galeria, Pool de Mídia, Aplicar Grade…).
+- O que isto implica no 21 free:
+  - Ficheiros feitos no 20/21 (.drb, .drp, .drx) **abrem diretamente** — já não é preciso converter bins/projetos para .drfx nem mexer no cabeçalho de versão. As conversões para .drfx só fazem falta se o ficheiro vier de uma versão **mais recente** que a instalada.
+  - Ferramentas Studio (Glow, Halation, Film Grain, Film Look Creator, Color Tone Diffuser, Noise Reduction…) continuam a dar **marca de água** → continuar a usar/fazer versões FREE dos PowerGrades.
+  - **Create Subtitles from Audio** (transcrição automática) é Studio → para legendar, transcrever aqui (faster-whisper + ffmpeg, ambos disponíveis na sessão cloud) e entregar um título Fusion com as legendas no estilo pedido + .srt. Primeiro um teste curto (20–30 s); se o vídeo for pesado, pedir só o áudio (Deliver → só áudio WAV/M4A).
+  - **Sem MCP nem scripting**: o servidor MCP nativo (21.1) é só Studio e no 21.1 o scripting Python passou a ser só Studio. Não propor ligação direta ao DaVinci.
 - Responder em **PT-PT**, curto e prático.
 - Os PowerGrades ficam no álbum **"PowerGrade 1"** da Galeria (página Color) — aparecem em todos os projetos.
 - Títulos .drfx: instalam-se com duplo clique / arrastar para a página Fusion; ficam em Effects > Titles.
@@ -32,7 +37,7 @@ Trabalhar sempre em cópias no scratchpad; nunca sobrescrever o ficheiro do util
 - Num .drp, timeline = `<Sm2Timeline>` com `<Sm2Sequence DbId>` que liga ao `SeqContainer/*.xml` (`<Sequence>`). Cada `<Sm2TiTrack>` é uma pista (índice baixo = camada de baixo).
 - Propriedades do clip na página Edit: `<EffectFiltersBA>` = cabeçalho + `0x81` + **zstd** → protobuf. Grupo 4 = Transform (p40 Pos X normalizada pela largura, p41 Pos Y pela altura, p42/p43 Zoom X/Y, p47 Rotação), grupo 2 p1 = Opacidade (0–100), grupo 6 = Crop, grupo 50 = OFX (ex. dropshadow). Curvas: cabeçalho 4 bytes + por keyframe int32 frame, 2 bytes, uint16 flags (bit0 = tem tangentes), double valor, [+6 doubles de tangentes]. Frames ≥ 86400 são tempo absoluto → subtrair o Start do clip. p48 (par de doubles) ignorado de propósito.
 - **.drx (PowerGrade)**: XML; o grade está em `<pClipFullVer>…<Body>` = `0x81` + zstd → protobuf. Nós = campo 1 → campo 7 (id em 1, nome em 6). Nós compostos têm o grafo interno no campo 11 (recursivo). Campo 10 do nó = bloco OFX (entradas tipo 3221225545/566/571/607/682; manter só 3221225473). Campo 9 = separadores; id **15 = Noise Reduction** (Studio).
-- Ficheiros vindos do DaVinci 21 (DbPrjVer 17): mudar a 2.ª linha para `<!--DbAppVer="20.1.0.0020" DbPrjVer="15"-->` (feito no itsjohan; confirmar com o utilizador se importou bem).
+- Ficheiros vindos do DaVinci 21 (DbPrjVer 17) só precisavam de cabeçalho alterado para o DaVinci 19: `<!--DbAppVer="20.1.0.0020" DbPrjVer="15"-->` (feito no itsjohan). Com o 21 instalado já não é necessário.
 
 ## Ferramentas Studio (causam marca de água) — removidas
 ResolveFX `glow`, `filmlook` (Film Look Creator), `colortonediffuser`, `halationplugin`, `filmgrain`; Noise Reduction (separador 15).
@@ -43,10 +48,11 @@ Se aparecer uma ResolveFX desconhecida: perguntar ao utilizador antes de a retir
 - Glow/Bloom → nó com Blur + modo de composição **Soft Light**, opacidade ~10% (o utilizador faz à mão).
 - Grão → página Edit: Effects > Fusion Effects > **Film Grain**.
 - Denoise → sem alternativa gratuita.
-- Para eu **criar** nós novos dentro de um PowerGrade preciso de um .drx de exemplo exportado do DaVinci 19 free com essa ferramenta configurada (ainda não recebido).
+- Para eu **criar** nós novos dentro de um PowerGrade preciso de um .drx de exemplo exportado do DaVinci free do utilizador com essa ferramenta configurada (ainda não recebido).
 
 ## Histórico (13-10-2026)
 - ClashiVFX_Titles.drb (DaVinci 20.2) → 28 títulos .drfx — **funcionou**.
 - 20_Text_Animations.drp (DaVinci 21) → 20 títulos .drfx (camadas juntas; falta PlayHead.png no nº 16; easing aproximado).
 - PowerGrades FREE: 2383 CB 1.192 (Glow, Film Look, NR), F-01 CineWarm, F-02 CineTone, F-03 CineCool (Bloom, Halation), itsjohan 1.53 (Halation, Glow, Film Grain; cabeçalho 21→20.1), SRM Node Setup 1.9 (Glow, NR).
+- 23-10-2026: o utilizador passou para o **DaVinci 21 free**. Originais .drb/.drp passam a abrir diretamente (preferir os originais aos .drfx convertidos, sobretudo as Text Animations, cujo easing era aproximado). PowerGrades: continuar com as versões FREE.
 - Os ficheiros originais e convertidos são packs comprados pelo utilizador: **não** os guardar no repositório.

@@ -1,4 +1,4 @@
-"""Converte um projeto (.drp) do DaVinci 20/21 com animações de texto em camadas num .drfx para o DaVinci 19.
+"""Converte um projeto (.drp) do DaVinci 20/21 com animações de texto em camadas num .drfx para uma versão anterior do DaVinci (ex.: 19).
 
 Uso: python3 drp_to_drfx.py entrada.drp saida.drfx "Nome da Pasta"
 Cada timeline vira um título; as camadas são juntas com Merge, os atrasos com TimeSpeed,

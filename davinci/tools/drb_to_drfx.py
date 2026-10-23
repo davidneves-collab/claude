@@ -1,4 +1,4 @@
-"""Converte um bin (.drb) do DaVinci 20/21 com títulos Fusion num pacote .drfx para o DaVinci 19.
+"""Converte um bin (.drb) do DaVinci 20/21 com títulos Fusion num pacote .drfx para uma versão anterior do DaVinci (ex.: 19).
 
 Uso: python3 drb_to_drfx.py entrada.drb saida.drfx "Nome da Pasta"
 Cada título do Media Pool vira um .setting em Edit/Titles/<Nome da Pasta>/.
