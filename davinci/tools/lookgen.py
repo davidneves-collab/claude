@@ -1,17 +1,19 @@
 """Gera LUTs .cube de um look para câmaras Canon (Canon 709 e Canon Log 3 / Cinema Gamut).
 
 Uso:
-  python3 lookgen.py look.json pasta_saida [frame1.png frame2.png ...]
+  python3 lookgen.py look.json pasta_saida [--combined] [frame1.png frame2.png ...]
 
-Gera em pasta_saida:
-  <nome>_Canon709.cube                      entrada Canon 709 / BT.709 (já em Rec.709) -> look
-  <nome>_CLog3_CinemaGamut.cube             entrada Canon Log 3 + Cinema Gamut, níveis Full -> Rec.709 -> look
-  <nome>_CLog3_CinemaGamut_VideoLevels.cube igual, para clips lidos com níveis Video
-  preview_<frame>.png                       antes/depois (look aplicado ao frame, tratado como Canon 709)
+Gera em pasta_saida (cada LUT é para ir num nó PRÓPRIO do DaVinci):
+  <nome>_LOOK.cube                               o look; entrada Rec.709 (Canon 709 / BT.709 ou já convertido)
+  CLog3_CinemaGamut_para_Rec709.cube             só a conversão técnica C-Log3 (Full) -> Rec.709 gama 2.4
+  CLog3_CinemaGamut_para_Rec709_VideoLevels.cube igual, para clips lidos com níveis Video
+  preview_<frame>.png                            antes/depois (look aplicado ao frame Rec.709)
+  com --combined, também as LUTs antigas com conversão + look juntas (<nome>_CLog3_CinemaGamut*.cube)
 
-O look é sempre aplicado em espaço de visualização Rec.709 (gama 2.4). A versão C-Log3 faz primeiro a
-conversão de cena (C-Log3 -> linear -> Cinema Gamut -> Rec.709 -> curva de tons), para que as duas
-versões tenham exatamente o mesmo look.
+Cadeia C-Log3 no DaVinci: [acertos em log] -> nó CLOG3 TO 709 (conversão) -> nó LOOK (<nome>_LOOK) -> [SAT].
+Cadeia Canon 709:         [acertos]          -> nó LOOK (<nome>_LOOK) -> [SAT].
+O look é sempre aplicado em espaço de visualização Rec.709 (gama 2.4); a conversão é C-Log3 -> linear ->
+Cinema Gamut -> Rec.709 -> curva de tons, por isso as duas cadeias dão o mesmo look.
 
 Níveis do C-Log3: as Canon gravam o Canon Log em Full range no cartão e o DaVinci (Data Levels: Auto)
 lê-o como Full, ou seja, o nó recebe código/1023 (cinzento 18% = 0.343, preto = 0.125). Para clips lidos
@@ -221,17 +223,21 @@ def safe_name(name):
     s = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
     return re.sub(r"[^A-Za-z0-9_-]+", "_", s).strip("_") or "Look"
 
-def build(look_path, outdir, frames=(), n709=33, nlog=65):
+def build(look_path, outdir, frames=(), n709=33, nlog=65, combined=False):
     P = json.load(open(look_path)); name = P.get("name", "Look"); fn = safe_name(name)
     os.makedirs(outdir, exist_ok=True)
     g = grid(n709)
-    p709 = os.path.join(outdir, f"{fn}_Canon709.cube")
-    write_cube(p709, n709, apply_look(g, P), f"{name} - Canon 709 / BT.709 -> Rec.709")
+    p709 = os.path.join(outdir, f"{fn}_LOOK.cube")
+    write_cube(p709, n709, apply_look(g, P), f"{name} - look (entrada Rec.709)")
     gl = grid(nlog); outs = [p709]
     for lv, suf in (("full", ""), ("video", "_VideoLevels")):
-        pl = os.path.join(outdir, f"{fn}_CLog3_CinemaGamut{suf}.cube")
-        write_cube(pl, nlog, apply_look(clog3_to_709(gl, levels=lv), P),
-                   f"{name} - Canon Log 3 Cinema Gamut ({lv} levels) -> Rec.709"); outs.append(pl)
+        pc = os.path.join(outdir, f"CLog3_CinemaGamut_para_Rec709{suf}.cube")
+        write_cube(pc, nlog, clog3_to_709(gl, levels=lv),
+                   f"Canon Log 3 Cinema Gamut ({lv} levels) -> Rec.709 Gamma 2.4"); outs.append(pc)
+        if combined:
+            pl = os.path.join(outdir, f"{fn}_CLog3_CinemaGamut{suf}.cube")
+            write_cube(pl, nlog, apply_look(clog3_to_709(gl, levels=lv), P),
+                       f"{name} - Canon Log 3 Cinema Gamut ({lv} levels) -> Rec.709"); outs.append(pl)
     if frames:
         from PIL import Image
         n, lut = read_cube(p709)
@@ -244,4 +250,5 @@ def build(look_path, outdir, frames=(), n709=33, nlog=65):
     return outs
 
 if __name__ == "__main__":
-    for p in build(sys.argv[1], sys.argv[2], sys.argv[3:]): print(p)
+    args = sys.argv[3:]; comb = "--combined" in args
+    for p in build(sys.argv[1], sys.argv[2], [a for a in args if a != "--combined"], combined=comb): print(p)

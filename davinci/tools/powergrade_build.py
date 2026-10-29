@@ -1,12 +1,15 @@
-"""Cria um PowerGrade (.drx) novo: uma cadeia de nós com nomes, em que um deles aplica uma LUT.
+"""Cria um PowerGrade (.drx) novo: uma cadeia de nós com nomes; cada LUT vai num nó próprio.
 
 Uso:
   python3 powergrade_build.py modelo.drx saida.drx --label "NOME" --lut "Pasta/Ficheiro.cube" \
       --nodes "EXPOSURE,BALANCE,CONTRAST,SKIN,LOOK*,SAT" [--thumb imagem.png]
+  # várias LUTs, cada uma no seu nó (NOME*=caminho):
+  python3 powergrade_build.py modelo.drx saida.drx --label "NOME" \
+      --nodes "EXPOSURE,BALANCE,CONTRAST,SKIN,CLOG3 TO 709*=Pasta/Conv.cube,LOOK*=Pasta/Look.cube,SAT"
 
 - modelo.drx: qualquer PowerGrade FREE que já funcione no DaVinci do utilizador (dá o esqueleto XML e
   os protótipos de nó vazio e de nó com LUT). Tem de conter pelo menos um nó com LUT.
-- O nó marcado com * recebe a LUT; os outros ficam vazios, prontos para acertos por clip.
+- O nó marcado com * recebe a LUT de --lut; "NOME*=caminho" recebe esse caminho. Os outros ficam vazios.
 - --lut é o caminho relativo à pasta de LUTs do DaVinci (ex.: "Claude Looks/Look_Canon709.cube").
 - Os identificadores (DbId) são todos novos, para não colidir com stills já importados.
 - O caminho da galeria (GalleryPath) do modelo é mantido, como nos PowerGrades que já foram testados.
@@ -129,7 +132,7 @@ def jpeg_thumb(img_path, w=576, h=324):
 def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("template"); ap.add_argument("out")
-    ap.add_argument("--label", required=True); ap.add_argument("--lut", required=True)
+    ap.add_argument("--label", required=True); ap.add_argument("--lut")
     ap.add_argument("--nodes", default="EXPOSURE,BALANCE,CONTRAST,SKIN,LOOK*,SAT")
     ap.add_argument("--thumb")
     a = ap.parse_args()
@@ -142,9 +145,15 @@ def main():
     if blank is None or lutp is None: sys.exit("o modelo precisa de um nó vazio e de um nó com LUT")
     names = [s.strip() for s in a.nodes.split(",") if s.strip()]
     new_nodes = []
+    luts = []
     for i, nm in enumerate(names):
-        nid = i + 2; is_l = nm.endswith("*"); nm = nm.rstrip("*")
-        proto = set_lut_path(lutp, a.lut) if is_l else blank
+        nid = i + 2; path = None
+        if "*=" in nm: nm, path = [t.strip() for t in nm.split("*=", 1)]
+        elif nm.endswith("*"):
+            nm = nm.rstrip("*").strip(); path = a.lut
+            if not path: sys.exit("nó %s marcado com * mas falta --lut" % nm)
+        if path: luts.append(path)
+        proto = set_lut_path(lutp, path) if path else blank
         new_nodes.append(make_node(proto, nid, i + 1, 120 + 260 * i, 300, nm))
     ids = [i + 2 for i in range(len(names))]
     gf = fields(graph); out = []
@@ -188,7 +197,7 @@ def main():
                      lambda mm: "<ClipThumbnails>%s</ClipThumbnails>" % thumbs, xml, count=1)
     if n != 1: sys.exit("não encontrei <ClipThumbnails> no modelo")
     open(a.out, "w", encoding="utf-8").write(xml)
-    print("ok:", a.out, "| nós:", ", ".join(names), "| LUT:", a.lut)
+    print("ok:", a.out, "| nós:", ", ".join(names), "| LUTs:", ", ".join(luts))
 
 if __name__ == "__main__":
     main()
