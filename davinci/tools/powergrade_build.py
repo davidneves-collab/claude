@@ -9,8 +9,9 @@ Uso:
 - O nó marcado com * recebe a LUT; os outros ficam vazios, prontos para acertos por clip.
 - --lut é o caminho relativo à pasta de LUTs do DaVinci (ex.: "Claude Looks/Look_Canon709.cube").
 - Os identificadores (DbId) são todos novos, para não colidir com stills já importados.
+- O caminho da galeria (GalleryPath) do modelo é mantido, como nos PowerGrades que já foram testados.
 """
-import argparse, datetime, io, os, re, sys, uuid
+import argparse, datetime, html, io, os, re, sys, uuid
 import zstandard
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 from pb import varint
@@ -168,17 +169,24 @@ def main():
     # identificadores novos
     for old in set(re.findall(r'DbId="([0-9a-f-]{36})"', xml)):
         xml = xml.replace(old, str(uuid.uuid4()))
-    xml = re.sub(r"<Label>[^<]*</Label>", "<Label>%s</Label>" % a.label, xml, count=1)
-    xml = re.sub(r"<SrcHint>[^<]*</SrcHint>", "<SrcHint>%s</SrcHint>" % a.label, xml, count=1)
-    xml = re.sub(r"<GalleryPath>[^<]*</GalleryPath>", "<GalleryPath></GalleryPath>", xml, count=1)
-    xml = re.sub(r"<CreateTime>[^<]*</CreateTime>",
-                 "<CreateTime>%s</CreateTime>" % datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.000"), xml, count=1)
+    label = html.escape(a.label, quote=False)
+    xml = re.sub(r"<Label>[^<]*</Label>", lambda mm: "<Label>%s</Label>" % label, xml, count=1)
+    xml = re.sub(r"<SrcHint>[^<]*</SrcHint>", lambda mm: "<SrcHint>%s</SrcHint>" % label, xml, count=1)
+    now = datetime.datetime.now().strftime("%Y-%m-%dT%H:%M:%S.000")
+    xml = re.sub(r"<CreateTime>[^<]*</CreateTime>", lambda mm: "<CreateTime>%s</CreateTime>" % now, xml, count=1)
     if a.thumb:
         j = jpeg_thumb(a.thumb).hex()
-        xml = re.sub(r"(<BtThumnail>.*?<Buffer>)[0-9a-f]*(</Buffer>)", lambda mm: mm.group(1) + j + mm.group(2), xml, count=1, flags=re.S)
+        xml, n = re.subn(r"(<BtThumnail\b[^>]*>.*?<Buffer>)[0-9a-f]*(</Buffer>)",
+                         lambda mm: mm.group(1) + j + mm.group(2), xml, count=1, flags=re.S)
+        if n != 1: sys.exit("não encontrei a miniatura (<BtThumnail>...<Buffer>) no modelo")
         xml = re.sub(r"<ImgWidth>\d+</ImgWidth>", "<ImgWidth>576</ImgWidth>", xml, count=1)
         xml = re.sub(r"<ImgHeight>\d+</ImgHeight>", "<ImgHeight>324</ImgHeight>", xml, count=1)
-    xml = re.sub(r"<ClipThumbnails>[0-9a-f]*</ClipThumbnails>", "<ClipThumbnails></ClipThumbnails>", xml, count=1)
+    # miniaturas dos nós: uma entrada "sem imagem" por nó, no formato que o próprio DaVinci escreve
+    thumbs = build([vbytes(1, build([vint(1, 2 * nid), vbytes(2, build([vint(1, 0xffffffff), vint(2, 0xffffffff)]))]))
+                    for nid in ids]).hex()
+    xml, n = re.subn(r"<ClipThumbnails>[0-9a-f]*</ClipThumbnails>|<ClipThumbnails/>",
+                     lambda mm: "<ClipThumbnails>%s</ClipThumbnails>" % thumbs, xml, count=1)
+    if n != 1: sys.exit("não encontrei <ClipThumbnails> no modelo")
     open(a.out, "w", encoding="utf-8").write(xml)
     print("ok:", a.out, "| nós:", ", ".join(names), "| LUT:", a.lut)
 
