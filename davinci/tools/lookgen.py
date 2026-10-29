@@ -142,7 +142,7 @@ def apply_look(rgb, P):
     sat = P.get("saturation", 1.0) * np.interp(y1[..., 0], [0, 0.25, 0.75, 1],
                                                [P.get("sat_shadows", 1.0), 1, 1, P.get("sat_highlights", 1.0)])
     hshift = np.zeros_like(h); lum = np.zeros_like(h)
-    skin = band_weight(h, P.get("skin_hue", 55.0), 30.0) * P.get("skin_protect", 0.0)
+    skin = band_weight(h, P.get("skin_hue", 128.0), 30.0) * P.get("skin_protect", 0.0)
     for b in P.get("hue_bands", []):
         w = band_weight(h, b["center"], b.get("width", 40.0)) * (1 - skin)
         sat = sat * (1 + w * (b.get("sat", 1.0) - 1))
