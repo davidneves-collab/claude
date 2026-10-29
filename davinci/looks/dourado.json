@@ -1,0 +1,136 @@
+{
+ "name": "Dourado",
+ "exposure": 0,
+ "contrast": 1,
+ "pivot": 0.45,
+ "curve": [
+  [
+   0,
+   0
+  ],
+  [
+   0.05,
+   0.03
+  ],
+  [
+   0.1,
+   0.08
+  ],
+  [
+   0.2,
+   0.2
+  ],
+  [
+   0.3,
+   0.322
+  ],
+  [
+   0.4,
+   0.44
+  ],
+  [
+   0.5,
+   0.552
+  ],
+  [
+   0.6,
+   0.655
+  ],
+  [
+   0.7,
+   0.75
+  ],
+  [
+   0.8,
+   0.833
+  ],
+  [
+   0.9,
+   0.902
+  ],
+  [
+   1,
+   0.965
+  ]
+ ],
+ "black_lift": 0.02,
+ "white_point": 0.97,
+ "temperature": 0.6,
+ "tint": 0,
+ "shadows_rgb": [
+  0.0005,
+  -0.0012,
+  0.015
+ ],
+ "midtones_rgb": [
+  0.0045,
+  0.0019,
+  -0.0323
+ ],
+ "highlights_rgb": [
+  0.0065,
+  0.0025,
+  -0.045
+ ],
+ "saturation": 1.0,
+ "sat_shadows": 0.92,
+ "sat_highlights": 0.86,
+ "hue_bands": [
+  {
+   "center": 108,
+   "width": 24,
+   "sat": 1,
+   "hue_shift": 3
+  },
+  {
+   "center": 137,
+   "width": 30,
+   "sat": 0.94,
+   "hue_shift": -6
+  },
+  {
+   "center": 147,
+   "width": 18,
+   "sat": 1.08,
+   "hue_shift": 0
+  },
+  {
+   "center": 172,
+   "width": 28,
+   "sat": 1,
+   "hue_shift": -4
+  },
+  {
+   "center": 212,
+   "width": 40,
+   "sat": 0.78,
+   "hue_shift": -8
+  },
+  {
+   "center": 248,
+   "width": 28,
+   "sat": 0.88,
+   "hue_shift": 0
+  },
+  {
+   "center": 280,
+   "width": 40,
+   "sat": 0.8,
+   "hue_shift": 0
+  },
+  {
+   "center": 320,
+   "width": 40,
+   "sat": 0.8,
+   "hue_shift": -5
+  },
+  {
+   "center": 0,
+   "width": 40,
+   "sat": 0.88,
+   "hue_shift": 0
+  }
+ ],
+ "skin_protect": 0,
+ "skin_hue": 126
+}

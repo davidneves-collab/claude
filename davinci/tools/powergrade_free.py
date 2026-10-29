@@ -72,6 +72,8 @@ for f,w,ks,p in top:
         p=build(g)
     newtop.append((f,w,ks,p))
 nd=build(newtop)
+# caminhos de LUT gravados no Windows ('Film Looks\\x.cube') passam a '/' como nas exportações do Mac (mesmo tamanho: o protobuf continua válido)
+nd=re.sub(rb"[ -~]{1,200}?\.cube", lambda m: m.group(0).replace(b"\\", b"/"), nd)
 assert build(top)==d, "roundtrip mismatch"
 comp=zstandard.ZstdCompressor(level=19,write_content_size=True).compress(nd)
 nb=(prefix+comp).hex()

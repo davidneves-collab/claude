@@ -4,24 +4,31 @@ Uso:
   python3 lookgen.py look.json pasta_saida [frame1.png frame2.png ...]
 
 Gera em pasta_saida:
-  <nome>_Canon709.cube          entrada Canon 709 / BT.709 (já em Rec.709)  -> look -> Rec.709 gama 2.4
-  <nome>_CLog3_CinemaGamut.cube entrada Canon Log 3 + Cinema Gamut          -> Rec.709 -> look
-  preview_<frame>.png           antes/depois (look aplicado ao frame, tratado como Canon 709)
+  <nome>_Canon709.cube                      entrada Canon 709 / BT.709 (já em Rec.709) -> look
+  <nome>_CLog3_CinemaGamut.cube             entrada Canon Log 3 + Cinema Gamut, níveis Full -> Rec.709 -> look
+  <nome>_CLog3_CinemaGamut_VideoLevels.cube igual, para clips lidos com níveis Video
+  preview_<frame>.png                       antes/depois (look aplicado ao frame, tratado como Canon 709)
 
 O look é sempre aplicado em espaço de visualização Rec.709 (gama 2.4). A versão C-Log3 faz primeiro a
 conversão de cena (C-Log3 -> linear -> Cinema Gamut -> Rec.709 -> curva de tons), para que as duas
 versões tenham exatamente o mesmo look.
 
-Níveis: o DaVinci normaliza os clips "Video level" para 0-1 antes dos nós (código 64 -> 0, 940 -> 1),
-por isso a entrada C-Log3 é interpretada nessa escala (cinzento 18% = 0.328).
+Níveis do C-Log3: as Canon gravam o Canon Log em Full range no cartão e o DaVinci (Data Levels: Auto)
+lê-o como Full, ou seja, o nó recebe código/1023 (cinzento 18% = 0.343, preto = 0.125). Para clips lidos
+como Video (ex.: gravador externo), o DaVinci mapeia 64 -> 0 e 940 -> 1 (cinzento 18% = 0.328): usar a
+variante _VideoLevels. Confirmar no waveform de 10 bits: preto do C-Log3 perto de 128 = Full, perto de 75 = Video.
+
+Convenção de matiz (graus, atan2(Cr, Cb) em BT.709): magenta ~50, vermelho ~103, pele/laranja ~120-140,
+amarelo ~175, verde ~230, ciano ~283, azul ~355.
 """
-import json, os, sys
+import json, os, re, sys, unicodedata
 import numpy as np
 
 # ---------------------------------------------------------------- utilidades
 def pchip(xk, yk):
     """Interpolação cúbica monótona (Fritsch-Carlson). Devolve f(x) com extrapolação linear."""
     xk = np.asarray(xk, float); yk = np.asarray(yk, float)
+    if len(xk) < 2 or np.any(np.diff(xk) <= 0): raise ValueError("pontos da curva têm de ter x estritamente crescente")
     h = np.diff(xk); d = np.diff(yk) / h
     m = np.zeros_like(yk)
     for i in range(1, len(xk) - 1):
@@ -51,9 +58,11 @@ def soft_clip01(u, k=0.12):
     return np.where(u > 1 - k, hi, np.where(u < k, lo, u))
 
 # ---------------------------------------------------------------- Canon Log 3 / Cinema Gamut
-def clog3_decode(v):
-    """Valor no DaVinci (níveis vídeo normalizados) -> reflectância linear (cinzento 18% = 0.18)."""
-    raw = (np.asarray(v, float) * 876.0 + 64.0) / 1023.0          # código normalizado (fórmula da Canon)
+def clog3_decode(v, levels="full"):
+    """Valor no nó do DaVinci -> reflectância linear (cinzento 18% = 0.18).
+    levels="full": nó recebe código/1023 (gravação interna Canon). levels="video": nó recebe (código-64)/876."""
+    v = np.asarray(v, float)
+    raw = v if levels == "full" else (v * 876.0 + 64.0) / 1023.0   # código normalizado (fórmula da Canon)
     x = np.where(raw < 0.097465473,
                  -(10 ** ((0.12783901 - raw) / 0.36726845) - 1) / 14.98325,
                  np.where(raw <= 0.15277891,
@@ -61,13 +70,13 @@ def clog3_decode(v):
                           (10 ** ((raw - 0.12240537) / 0.36726845) - 1) / 14.98325))
     return x * 0.9
 
-def clog3_encode(x):
+def clog3_encode(x, levels="full"):
     """Inverso de clog3_decode (para testes)."""
     x = np.asarray(x, float) / 0.9
     raw = np.where(x < -0.014, -0.36726845 * np.log10(np.maximum(-x * 14.98325 + 1, 1e-10)) + 0.12783901,
                    np.where(x <= 0.014, 1.9754798 * x + 0.12512219,
                             0.36726845 * np.log10(np.maximum(x * 14.98325 + 1, 1e-10)) + 0.12240537))
-    return (raw * 1023.0 - 64.0) / 876.0
+    return raw if levels == "full" else (raw * 1023.0 - 64.0) / 876.0
 
 def _rgb_to_xyz(prim, white):
     P = np.array([[x / y, 1.0, (1 - x - y) / y] for x, y in prim]).T
@@ -81,7 +90,7 @@ M_CG_TO_709 = np.linalg.solve(_rgb_to_xyz(REC709, D65), _rgb_to_xyz(CINEMA_GAMUT
 
 # Curva de tons (cena -> Rec.709 gama 2.4). Pontos: (stops relativos a 18%, valor codificado)
 DRT_POINTS = [(-12, 0.0), (-7, 0.012), (-5, 0.045), (-3, 0.14), (-1.5, 0.27), (0, 0.415),
-              (1, 0.53), (2.32, 0.80), (3.5, 0.915), (5, 0.975), (7, 0.997), (10, 1.0)]
+              (1, 0.55), (2.32, 0.845), (3.5, 0.935), (5, 0.98), (7, 0.997), (10, 1.0)]
 
 def make_drt(points=DRT_POINTS):
     f = pchip([p[0] for p in points], [p[1] for p in points])
@@ -90,16 +99,20 @@ def make_drt(points=DRT_POINTS):
         return np.clip(f(ev), 0, 1)
     return drt
 
-def gamut_soft_clip(rgb, thr=0.8):
-    """Comprime suavemente valores negativos (cores fora do Rec.709) em vez de os cortar."""
-    y = np.maximum((rgb * LUMA).sum(-1, keepdims=True), 1e-6)
-    d = (y - rgb) / y                                      # distância ao eixo neutro (1 = no limite)
-    dc = np.where(d > thr, thr + (1 - thr) * np.tanh((d - thr) / (1 - thr)), d)
-    return y - dc * y
+def gamut_soft_clip(rgb, thr=0.8, lim=1.3, p=1.2):
+    """Compressão de gama ao estilo ACES RGC: só mexe em cores perto/fora do limite do Rec.709.
+    d = (max - canal)/max; d < thr fica intacto; d = lim passa a 1 (limite do gama)."""
+    ach = np.max(rgb, -1, keepdims=True)
+    a = np.where(np.abs(ach) < 1e-9, 1e-9, np.abs(ach))
+    d = (ach - rgb) / a
+    s = (lim - thr) / ((((1 - thr) / (lim - thr)) ** -p) - 1) ** (1 / p)
+    t = np.maximum(d - thr, 0) / s
+    dc = np.where(d > thr, thr + s * t / (1 + t ** p) ** (1 / p), d)
+    return np.where(ach > 0, ach - dc * a, rgb)
 
-def clog3_to_709(v, drt=None):
+def clog3_to_709(v, drt=None, levels="full"):
     drt = drt or make_drt()
-    lin = clog3_decode(v) @ M_CG_TO_709.T
+    lin = clog3_decode(v, levels) @ M_CG_TO_709.T
     lin = gamut_soft_clip(lin)
     return drt(np.maximum(lin, 0))
 
@@ -138,13 +151,14 @@ def apply_look(rgb, P):
         x = x + w * off
     # 4) saturação global, por luminância e por bandas de matiz
     h, y1, cb, cr = hue_deg(np.clip(x, 0, 1))
+    gate = np.clip(np.hypot(cb, cr) / 0.02, 0, 1) ** 2   # cinzentos não têm matiz: as bandas não lhes tocam
     y1 = y1[..., None]
     sat = P.get("saturation", 1.0) * np.interp(y1[..., 0], [0, 0.25, 0.75, 1],
                                                [P.get("sat_shadows", 1.0), 1, 1, P.get("sat_highlights", 1.0)])
     hshift = np.zeros_like(h); lum = np.zeros_like(h)
     skin = band_weight(h, P.get("skin_hue", 128.0), 30.0) * P.get("skin_protect", 0.0)
     for b in P.get("hue_bands", []):
-        w = band_weight(h, b["center"], b.get("width", 40.0)) * (1 - skin)
+        w = band_weight(h, b["center"], b.get("width", 40.0)) * (1 - skin) * gate
         sat = sat * (1 + w * (b.get("sat", 1.0) - 1))
         hshift = hshift + w * b.get("hue_shift", 0.0)
         lum = lum + w * b.get("lum", 0.0)
@@ -166,8 +180,11 @@ def grid(n):
     return np.stack([r, g, b], -1).reshape(-1, 3)
 
 def write_cube(path, n, data, title):
+    title = title.replace('"', "'")
     with open(path, "w") as f:
         f.write(f'TITLE "{title}"\nLUT_3D_SIZE {n}\nDOMAIN_MIN 0.0 0.0 0.0\nDOMAIN_MAX 1.0 1.0 1.0\n')
+        data = np.asarray(data, float)
+        if not np.isfinite(data).all(): raise ValueError("a LUT tem valores NaN/inf")
         np.savetxt(f, np.clip(data, 0, 1), fmt="%.6f")
 
 def read_cube(path):
@@ -179,26 +196,42 @@ def read_cube(path):
     return n, np.array(rows).reshape(n, n, n, 3)                 # [b][g][r]
 
 def apply_cube(img, n, lut):
-    """Interpolação trilinear de uma imagem float (H,W,3) 0-1."""
-    p = np.clip(img, 0, 1) * (n - 1); i0 = np.floor(p).astype(int); i0 = np.minimum(i0, n - 2); f = p - i0
-    out = 0
-    for dr in (0, 1):
-        for dg in (0, 1):
-            for db in (0, 1):
-                w = (f[..., 0] if dr else 1 - f[..., 0]) * (f[..., 1] if dg else 1 - f[..., 1]) * (f[..., 2] if db else 1 - f[..., 2])
-                out = out + w[..., None] * lut[i0[..., 2] + db, i0[..., 1] + dg, i0[..., 0] + dr]
+    """Interpolação tetraédrica (como a opção Tetrahedral do DaVinci) de uma imagem float (H,W,3) 0-1."""
+    p = np.clip(img, 0, 1) * (n - 1); i0 = np.minimum(np.floor(p).astype(int), n - 2); f = p - i0
+    fr, fg, fb = f[..., 0], f[..., 1], f[..., 2]
+    def L(dr, dg, db): return lut[i0[..., 2] + db, i0[..., 1] + dg, i0[..., 0] + dr]
+    c000 = L(0, 0, 0); c111 = L(1, 1, 1)
+    out = np.empty(img.shape[:-1] + (3,))
+    # os 6 tetraedros do cubo, conforme a ordem das frações
+    cases = [((fr >= fg) & (fg >= fb), (1, 0, 0), (1, 1, 0), fr, fg, fb),
+             ((fr >= fb) & (fb > fg), (1, 0, 0), (1, 0, 1), fr, fb, fg),
+             ((fb > fr) & (fr >= fg), (0, 0, 1), (1, 0, 1), fb, fr, fg),
+             ((fg > fr) & (fr >= fb), (0, 1, 0), (1, 1, 0), fg, fr, fb),
+             ((fg >= fb) & (fb > fr), (0, 1, 0), (0, 1, 1), fg, fb, fr),
+             ((fb > fg) & (fg > fr), (0, 0, 1), (0, 1, 1), fb, fg, fr)]
+    done = np.zeros(img.shape[:-1], bool)
+    for m, a, b, t1, t2, t3 in cases:
+        m = m & ~done; done |= m
+        ca = L(*a); cb = L(*b)
+        v = (1 - t1)[..., None] * c000 + (t1 - t2)[..., None] * ca + (t2 - t3)[..., None] * cb + t3[..., None] * c111
+        out[m] = v[m]
     return out
 
+def safe_name(name):
+    s = unicodedata.normalize("NFKD", name).encode("ascii", "ignore").decode()
+    return re.sub(r"[^A-Za-z0-9_-]+", "_", s).strip("_") or "Look"
+
 def build(look_path, outdir, frames=(), n709=33, nlog=65):
-    P = json.load(open(look_path)); name = P.get("name", "Look")
+    P = json.load(open(look_path)); name = P.get("name", "Look"); fn = safe_name(name)
     os.makedirs(outdir, exist_ok=True)
     g = grid(n709)
-    p709 = os.path.join(outdir, f"{name}_Canon709.cube")
+    p709 = os.path.join(outdir, f"{fn}_Canon709.cube")
     write_cube(p709, n709, apply_look(g, P), f"{name} - Canon 709 / BT.709 -> Rec.709")
-    gl = grid(nlog)
-    pl = os.path.join(outdir, f"{name}_CLog3_CinemaGamut.cube")
-    write_cube(pl, nlog, apply_look(clog3_to_709(gl), P), f"{name} - Canon Log 3 Cinema Gamut -> Rec.709")
-    outs = [p709, pl]
+    gl = grid(nlog); outs = [p709]
+    for lv, suf in (("full", ""), ("video", "_VideoLevels")):
+        pl = os.path.join(outdir, f"{fn}_CLog3_CinemaGamut{suf}.cube")
+        write_cube(pl, nlog, apply_look(clog3_to_709(gl, levels=lv), P),
+                   f"{name} - Canon Log 3 Cinema Gamut ({lv} levels) -> Rec.709"); outs.append(pl)
     if frames:
         from PIL import Image
         n, lut = read_cube(p709)
