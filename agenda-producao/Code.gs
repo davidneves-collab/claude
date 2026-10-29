@@ -90,7 +90,10 @@ function criarMenu() {
     .addItem('Atualizar evento (data/hora/local)', 'atualizarSelecionados')
     .addItem('Dar acesso ao consultor (pasta e script)', 'acessoSelecionados')
     .addSeparator()
+    .addItem('Processar aprovações agora', 'processarAprovacoesAgora')
+    .addSeparator()
     .addItem('Configurar folha / aplicar tema', 'configurar')
+    .addItem('Configurar aprovação de vídeos', 'configurarAprovacao')
     .addToUi();
 }
 
@@ -216,7 +219,9 @@ function preencherEmails() {
 function onEdit(e) {
   const sh = e.range.getSheet();
   const nome = sh.getName();
-  if (nome === SHEET_CONSULTORES) {
+  if (nome === SHEET_APROVACAO) {
+    aprovacaoEditada(e);
+  } else if (nome === SHEET_CONSULTORES) {
     preencherEmails();
   } else if (nome === SHEET && e.range.getLastColumn() >= COL.consultor && e.range.getColumn() <= COL.consultor) {
     const linhas = e.range.getNumRows();
