@@ -6,7 +6,7 @@ description: Ajustar ficheiros do DaVinci Resolve para a versão gratuita do uti
 # DaVinci Free — conversões e ajustes
 
 ## Contexto do utilizador
-- DaVinci Resolve **21 gratuito** (instalado por volta de 23-10-2026; antes usava o 19 gratuito), **Mac**, interface em **português (BR)** (Galeria, Pool de Mídia, Aplicar Grade…).
+- DaVinci Resolve **21 gratuito** (instalado por volta de 23-10-2026; antes usava o 19 gratuito), **Mac**. No 19 a interface estava em português (BR); no 21 está em **inglês** (Gallery, PowerGrade 1, Project Settings > Color Management > Lookup Tables).
 - O que isto implica no 21 free:
   - Ficheiros feitos no 20/21 (.drb, .drp, .drx) **abrem diretamente** — já não é preciso converter bins/projetos para .drfx nem mexer no cabeçalho de versão. As conversões para .drfx só fazem falta se o ficheiro vier de uma versão **mais recente** que a instalada.
   - Ferramentas Studio (Glow, Halation, Film Grain, Film Look Creator, Color Tone Diffuser, Noise Reduction…) continuam a dar **marca de água** → continuar a usar/fazer versões FREE dos PowerGrades.
@@ -42,6 +42,7 @@ Trabalhar sempre em cópias no scratchpad; nunca sobrescrever o ficheiro do util
 - **.drx (PowerGrade)**: XML; o grade está em `<pClipFullVer>…<Body>` = `0x81` + zstd → protobuf. Nós = campo 1 → campo 7 (id em 1, nome em 6). Nós compostos têm o grafo interno no campo 11 (recursivo). Campo 10 do nó = bloco OFX (entradas tipo 3221225545/566/571/607/682; manter só 3221225473). Campo 9 = separadores; id **15 = Noise Reduction** (Studio).
 - Grafo do PowerGrade: campo 1 do grafo = nó selecionado; ligações = campo 8 `{1: origem, 3: destino, 4: porta de entrada (omitida se 0), 5: 64, 6: 64, 7: id da ligação}`; campo 9 = entrada do grafo (3.4 = primeiro nó), campo 10 = saída (3.4 = último nó). Nó: `[1 id, 2 número no ecrã, 4 x, 5 y, 6 nome, 7, 8 (44 normal / 126 composto), 9 separadores, 10 base OFX, 12]`.
 - Nó de LUT: separador 1 com parâmetro 2248147104 = 6 e **2248147105 = caminho relativo à pasta de LUTs** (ex. `Film Looks/Rec709 Kodak 2383 D60.cube`). Os packs F-01/02/03 vinham com `\` (Windows); `powergrade_free.py` agora converte para `/`.
+- **Confirmado (29-10-2026):** os PowerGrades criados com `powergrade_build.py` (modelo SRM FREE) importam no DaVinci 21 free, arrastando os .drx para o álbum PowerGrade 1, com miniatura própria e a cadeia de nós correta. Se a pasta de LUTs não existir, o visor mostra "Multiple LUTs missing". **Ao entregar LUTs num zip, pôr os .cube DENTRO da subpasta com o nome exato do caminho** (ex. `Dourado/…`), para o utilizador só ter de arrastar essa pasta para Open LUT Folder.
 - `<ClipThumbnails>` = protobuf com uma entrada por nó `{1: 2*id, 2: {1: 184, 2: 92, 3: 1, 4: JPEG}}` (sem imagem: `{1: 0xffffffff, 2: 0xffffffff}`). `<BtThumnail DbId=…>` tem atributos (atenção nas regex).
 - Ficheiros vindos do DaVinci 21 (DbPrjVer 17) só precisavam de cabeçalho alterado para o DaVinci 19: `<!--DbAppVer="20.1.0.0020" DbPrjVer="15"-->` (feito no itsjohan). Com o 21 instalado já não é necessário.
 
