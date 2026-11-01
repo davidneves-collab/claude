@@ -10,6 +10,8 @@ Scripts para adaptar ficheiros do DaVinci Resolve à versão gratuita (DaVinci 1
 - `tools/lookgen.py` — gera LUTs `.cube` de um look (Canon 709 e Canon C-Log3) e pré-visualizações
 - `tools/powergrade_build.py` — cria um PowerGrade novo (cadeia de nós + nó LOOK com a LUT)
 - `tools/powergrade_edit.py` — edita um PowerGrade existente: CSTs, retirar nós, acrescentar nós de LUT
+- `tools/powergrade_tree.py` — constrói uma árvore de nós completa a partir de um JSON (`specs/`)
+- `tools/pg_corrector.py`, `tools/pg_windows.py` — escrever curvas, LUT, blur, pivot, máscaras circulares, ligar/desligar nós
 - `looks/` — parâmetros dos looks criados (ex.: `dourado.json`)
 
 Dependências: `pip install zstandard lupa numpy pillow` (e `colour-science` para verificar a matemática de cor)
