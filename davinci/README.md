@@ -11,6 +11,7 @@ Scripts para adaptar ficheiros do DaVinci Resolve à versão gratuita (DaVinci 1
 - `tools/powergrade_build.py` — cria um PowerGrade novo (cadeia de nós + nó LOOK com a LUT)
 - `tools/powergrade_edit.py` — edita um PowerGrade existente: CSTs, retirar nós, acrescentar nós de LUT
 - `tools/powergrade_tree.py` — constrói uma árvore de nós completa a partir de um JSON (`specs/`)
+- `tools/powergrade_cover.py` — capa gráfica para a miniatura (título, modo C-LOG3/REC709, look)
 - `tools/pg_corrector.py`, `tools/pg_windows.py` — escrever curvas, LUT, blur, pivot, máscaras circulares, ligar/desligar nós
 - `looks/` — parâmetros dos looks criados (ex.: `dourado.json`)
 
