@@ -13,6 +13,7 @@ description: Ajustar ficheiros do DaVinci Resolve para a versão gratuita do uti
   - **Create Subtitles from Audio** (transcrição automática) é Studio → para legendar, transcrever aqui (faster-whisper + ffmpeg, ambos disponíveis na sessão cloud) e entregar um título Fusion com as legendas no estilo pedido + .srt. Primeiro um teste curto (20–30 s); se o vídeo for pesado, pedir só o áudio (Deliver → só áudio WAV/M4A).
   - **Sem MCP nem scripting**: o servidor MCP nativo (21.1) é só Studio e no 21.1 o scripting Python passou a ser só Studio. Não propor ligação direta ao DaVinci.
 - Responder em **PT-PT**, curto e prático.
+- **Miniaturas dos PowerGrades:** nunca usar fotos de pessoas/clientes (ex. a Goreti). Usar capas gráficas: fundo escuro com perfurações de película, "CINEKIT", nome grande do modo (C-LOG3 laranja / REC709 azul) e o look (ex. "KODAK 5219 + 2383"), fonte Inter.
 - **Regras do utilizador para LUTs/PowerGrades:** (1) sempre que eu criar uma LUT, **entregar o ficheiro .cube** (também à parte, não só escondido num zip); (2) **cada LUT no seu próprio nó** — conversão técnica (ex. C-Log3 → 709) separada do look criativo, para ele poder trocar/ajustar o look.
 - Os PowerGrades ficam no álbum **"PowerGrade 1"** da Galeria (página Color) — aparecem em todos os projetos.
 - Títulos .drfx: instalam-se com duplo clique / arrastar para a página Fusion; ficam em Effects > Titles.
