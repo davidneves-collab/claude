@@ -15,7 +15,8 @@ Os tempos estão afinados para a retenção. A primeira letra já se vê no fram
 
 - `Terrae_abertura_9x16_PNG/` (e `.zip`): 62 frames, 2,5 s
 - `Terrae_fecho_9x16_PNG/` (e `.zip`): 115 frames, 4,6 s
-- `*_preview.mp4`: pré-visualização sobre Ink, só para ver
+- `Terrae_abertura_9x16_sand_PNG/` e `Terrae_fecho_9x16_sand_PNG/` (e `.zip`): mesma animação sobre fundo Sand `#E4DDD3`, com letras e símbolo em Ink `#1D1D1B` (PNG opaco)
+- `*_preview.mp4`: pré-visualização, só para ver
 
 No DaVinci: Media Pool → importar a pasta como sequência de imagens (aparece como um clip), a 25 fps.
 
@@ -27,7 +28,7 @@ python3 terrae_abertura.py                       # abertura
 python3 terrae_abertura.py --nome fecho --hold 2.5
 ```
 
-Opções: `--opacidade` (0,85), `--largura` do lockup em px (860), `--hold`.
+Opções: `--fundo` (`transparente`, `sand`, `ink`, `sienna`, `sage`), `--opacidade` (0,85), `--largura` do lockup em px (860), `--hold`.
 Tempos no topo de `terrae_abertura.py` (`STAGGER`, `PAUSA`, …).
 
 Lettering e símbolo vêm do SVG oficial (`assets/terrae_logo_neg_horizontal.svg`). Cada letra e cada peça é animada em separado, sem redesenho.

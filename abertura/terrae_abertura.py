@@ -14,6 +14,7 @@ e cada peça do símbolo é animada em separado, sem redesenhar nada.
 Uso:
   python3 terrae_abertura.py                      # abertura, ≈2,5 s
   python3 terrae_abertura.py --nome fecho --hold 2.5
+  python3 terrae_abertura.py --fundo sand            # fundo sólido Sand, letras Ink
   opções: --opacidade 0.85  --largura 860  --saida DIR
 """
 import argparse, io, os, re, shutil, subprocess
@@ -23,6 +24,13 @@ from PIL import Image
 AQUI = os.path.dirname(os.path.abspath(__file__))
 W, H, FPS = 1080, 1920, 25
 WHITE = (255, 255, 255)
+FUNDOS = {  # cor de fundo, cor das letras e do símbolo
+    "transparente": (None, WHITE),
+    "sand": ((0xE4, 0xDD, 0xD3), (0x1D, 0x1D, 0x1B)),
+    "ink": ((0x1D, 0x1D, 0x1B), WHITE),
+    "sienna": ((0x97, 0x6E, 0x53), (0xE4, 0xDD, 0xD3)),
+    "sage": ((0x8A, 0x8E, 0x75), (0xE4, 0xDD, 0xD3)),
+}
 
 # tempos (s)
 # Afinado para retenção em Reels: a primeira letra aparece logo no 1.º frame e o lockup
@@ -90,8 +98,8 @@ def com_alfa(img, a):
     return img
 
 
-def frame(L, t, opac):
-    img = Image.new("RGBA", (W, H), (0, 0, 0, 0))
+def frame(L, t, opac, fundo=None):
+    img = Image.new("RGBA", (W, H), (fundo + (255,)) if fundo else (0, 0, 0, 0))
     x_lock = (W - L.w) / 2                       # lockup final centrado
     y_lock = (H - L.h) / 2
     # na fase das letras, a palavra está centrada sozinha
@@ -128,18 +136,21 @@ def main():
     ap.add_argument("--opacidade", type=float, default=0.85)
     ap.add_argument("--hold", type=float, default=HOLD, help="segundos com o lockup parado no fim (fecho: 2 a 3)")
     ap.add_argument("--nome", default="abertura", help="abertura ou fecho (só muda os nomes dos ficheiros)")
+    ap.add_argument("--fundo", default="transparente", choices=list(FUNDOS),
+                    help="transparente (para pôr sobre o vídeo) ou fundo sólido Terrae")
     ap.add_argument("--largura", type=int, default=860, help="largura do lockup final em px")
     a = ap.parse_args()
 
     DUR = T_LOGO + D_LOGO + a.hold
-    base = f"Terrae_{a.nome}_9x16"
+    fundo, cor = FUNDOS[a.fundo]
+    base = f"Terrae_{a.nome}_9x16" + (f"_{a.fundo}" if fundo else "")
     pasta = f"{a.saida}/{base}_PNG"
     shutil.rmtree(pasta, ignore_errors=True)
     os.makedirs(pasta)
-    L = Lockup(a.largura, WHITE)
+    L = Lockup(a.largura, cor)
     n = int(round(DUR * FPS))
     for k in range(n):
-        frame(L, k / FPS, a.opacidade).save(f"{pasta}/terrae_{a.nome}_{k:04d}.png", optimize=True)
+        frame(L, k / FPS, a.opacidade, fundo).convert("RGB" if fundo else "RGBA").save(f"{pasta}/terrae_{a.nome}_{k:04d}.png", optimize=True)
 
     # pré-visualização em MP4 sobre Ink (só para ver; a peça de trabalho é a sequência PNG)
     subprocess.run(["ffmpeg", "-v", "error", "-y", "-f", "lavfi", "-i", f"color=c=0x1D1D1B:s={W}x{H}:r={FPS}",
