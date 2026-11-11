@@ -1,7 +1,7 @@
 """Capa gráfica para a miniatura de um PowerGrade (nunca usar fotos de pessoas).
 
 Uso:
-  python3 powergrade_cover.py saida.png "CINEKIT" "C-LOG3" "KODAK 5219 + 2383" [clog3|rec709|#rrggbb]
+  python3 powergrade_cover.py saida.png "CINEKIT" "C-LOG3" "KODAK 5219 + 2383" [clog3|rec709|#rrggbb] ["rodapé"]
 
 Fundo escuro com perfurações de película, título pequeno, modo em grande (laranja para C-LOG3,
 azul-petróleo para REC709) e o look por baixo. 1152x648 (o construtor reduz para 576x324).
@@ -44,5 +44,6 @@ if __name__ == "__main__":
     out, title, big, look = sys.argv[1:5]
     acc = sys.argv[5] if len(sys.argv) > 5 else ("clog3" if "LOG" in big.upper() else "rec709")
     accent = ACCENTS.get(acc) or tuple(int(acc.lstrip("#")[i:i + 2], 16) for i in (0, 2, 4))
-    cover(out, title, big, look, accent)
+    footer = sys.argv[6] if len(sys.argv) > 6 else "Canon R50 V  ·  DaVinci Resolve"
+    cover(out, title, big, look, accent, footer)
     print("ok:", out)
