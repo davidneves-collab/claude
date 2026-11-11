@@ -19,7 +19,23 @@ def font(name, size):
         except Exception: pass
     return ImageFont.load_default()
 
-def cover(path, title, big, look, accent, footer="Canon R50 V  ·  DaVinci Resolve"):
+def draw_icon(d, kind, cx, cy, s, col):
+    """Pictogramas simples: 'drone' (4 hélices) ou 'gimbal' (punho + cabeça de câmara)."""
+    w = max(4, int(s * 0.05))
+    if kind == "drone":
+        for dx, dy in ((-1, -1), (1, -1), (-1, 1), (1, 1)):
+            ax, ay = cx + dx * s * 0.42, cy + dy * s * 0.42
+            d.line((cx, cy, ax, ay), fill=col, width=w)
+            d.ellipse((ax - s * 0.2, ay - s * 0.2, ax + s * 0.2, ay + s * 0.2), outline=col, width=w)
+        d.rounded_rectangle((cx - s * 0.16, cy - s * 0.12, cx + s * 0.16, cy + s * 0.12), int(s * 0.05), fill=col)
+    elif kind == "gimbal":
+        d.rounded_rectangle((cx - s * 0.13, cy - s * 0.05, cx + s * 0.13, cy + s * 0.62), int(s * 0.1), outline=col, width=w)
+        d.ellipse((cx - s * 0.06, cy + s * 0.18, cx + s * 0.06, cy + s * 0.30), fill=col)
+        d.rounded_rectangle((cx - s * 0.2, cy - s * 0.5, cx + s * 0.2, cy - s * 0.12), int(s * 0.08), outline=col, width=w)
+        d.ellipse((cx - s * 0.1, cy - s * 0.41, cx + s * 0.1, cy - s * 0.21), outline=col, width=w)
+
+def cover(path, title, big, look, accent, footer="Canon R50 V  ·  DaVinci Resolve",
+          title_font="InterDisplay-Bold.otf", title_size=54, icon=None):
     W, H = 1152, 648
     y, x = np.mgrid[0:H, 0:W]
     base = np.zeros((H, W, 3)); base[...] = (14, 15, 18)
@@ -29,9 +45,12 @@ def cover(path, title, big, look, accent, footer="Canon R50 V  ·  DaVinci Resol
     d = ImageDraw.Draw(im)
     for yy in (18, H - 46):
         for xx in range(20, W, 58): d.rounded_rectangle((xx, yy, xx + 34, yy + 28), 6, fill=(0, 0, 0))
-    d.text((70, 118), title, font=font("InterDisplay-Bold.otf", 54), fill=(235, 228, 215))
+    if icon: draw_icon(d, icon, W - 190, 205, 230, tuple(int(c * 0.9) for c in accent))
+    ty = 118 if title_size <= 60 else 118 - (title_size - 54)
+    d.text((70, ty), title, font=font(title_font, title_size), fill=(235, 228, 215))
     size = 210
-    while size > 90 and d.textlength(big, font=font("InterDisplay-Black.otf", size)) > W - 140: size -= 10
+    room = W - 140 - (300 if icon else 0)
+    while size > 90 and d.textlength(big, font=font("InterDisplay-Black.otf", size)) > room: size -= 10
     d.text((66, 178), big, font=font("InterDisplay-Black.otf", size), fill=tuple(int(c) for c in accent))
     d.line((72, 438, W - 72, 438), fill=(235, 228, 215), width=3)
     lsize = 64

@@ -1,0 +1,220 @@
+{
+ "template": "CINEKIT_REC709_5219_2383.drx",
+ "label": "DJI OSMO POCKET - 5219+2383",
+ "thumb": "",
+ "nodes": [
+  {
+   "name": "NR",
+   "src": "tpl:52",
+   "enabled": false,
+   "pos": [
+    0,
+    0
+   ]
+  },
+  {
+   "name": "D-CINELIKE",
+   "curve": [
+    [
+     0.05,
+     0.02
+    ],
+    [
+     0.15,
+     0.1
+    ],
+    [
+     0.3,
+     0.26
+    ],
+    [
+     0.5,
+     0.5
+    ],
+    [
+     0.7,
+     0.74
+    ],
+    [
+     0.88,
+     0.92
+    ],
+    [
+     1.0,
+     1.0
+    ]
+   ],
+   "pos": [
+    0,
+    1
+   ]
+  },
+  {
+   "name": "CST IN",
+   "src": "tpl:26",
+   "enabled": true,
+   "pos": [
+    0,
+    2
+   ],
+   "cst": {
+    "inputColorSpace": "REC709_COLORSPACE",
+    "inputGamma": "REC709_GAMMA",
+    "doInvOOTF": "0"
+   }
+  },
+  {
+   "name": "EXP",
+   "src": "tpl:56",
+   "enabled": true,
+   "pos": [
+    0,
+    3
+   ]
+  },
+  {
+   "name": "CONTRAST",
+   "src": "tpl:57",
+   "enabled": true,
+   "pos": [
+    0,
+    4
+   ]
+  },
+  {
+   "name": "LIN WB",
+   "src": "tpl:31",
+   "enabled": true,
+   "pos": [
+    0,
+    5
+   ]
+  },
+  {
+   "name": "TEMP",
+   "src": "tpl:58",
+   "enabled": true,
+   "pos": [
+    0,
+    6
+   ]
+  },
+  {
+   "name": "GLOBAL",
+   "src": "tpl:59",
+   "enabled": false,
+   "pos": [
+    1,
+    1
+   ]
+  },
+  {
+   "name": "HSV SAT",
+   "src": "tpl:32",
+   "enabled": false,
+   "pos": [
+    1,
+    2
+   ]
+  },
+  {
+   "name": "CURVES",
+   "src": "tpl:60",
+   "enabled": true,
+   "pos": [
+    1,
+    3
+   ]
+  },
+  {
+   "name": "MASK BRILHO",
+   "src": "tpl:51",
+   "enabled": true,
+   "pos": [
+    1,
+    4
+   ]
+  },
+  {
+   "name": "MASK DESFOQUE",
+   "src": "tpl:61",
+   "enabled": true,
+   "pos": [
+    1,
+    5
+   ]
+  },
+  {
+   "name": "MASK VINHETA",
+   "src": "tpl:62",
+   "enabled": true,
+   "pos": [
+    1,
+    6
+   ]
+  },
+  {
+   "name": "SOFT",
+   "src": "tpl:63",
+   "enabled": false,
+   "pos": [
+    1,
+    7
+   ]
+  },
+  {
+   "name": "CST OUT",
+   "src": "tpl:29",
+   "enabled": true,
+   "pos": [
+    2,
+    1
+   ]
+  },
+  {
+   "name": "5219 NEG",
+   "src": "tpl:37",
+   "enabled": true,
+   "pos": [
+    2,
+    2
+   ]
+  },
+  {
+   "name": "LUT 2383",
+   "src": "tpl:64",
+   "enabled": true,
+   "pos": [
+    2,
+    3
+   ]
+  },
+  {
+   "name": "FX",
+   "src": "tpl:65",
+   "enabled": true,
+   "pos": [
+    2,
+    4
+   ]
+  },
+  {
+   "name": "SHARP",
+   "src": "tpl:53",
+   "enabled": false,
+   "pos": [
+    2,
+    5
+   ]
+  },
+  {
+   "name": "GRAIN",
+   "src": "tpl:66",
+   "enabled": false,
+   "pos": [
+    2,
+    6
+   ]
+  }
+ ]
+}
